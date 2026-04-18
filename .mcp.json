@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "fontforge": {
+      "type": "stdio",
+      "command": "/Users/visualval/fontforge/venv/bin/python",
+      "args": ["/Users/visualval/fontforge/mcp-server/server.py"]
+    }
+  }
+}
