@@ -5,6 +5,9 @@ __pycache__/
 .DS_Store
 .idea/
 
+# Per-machine Claude Code permission config — not shareable
+.claude/settings.local.json
+
 # Nested font repos with their own git history — manage separately
 fonts/GoogleSans-Code/
 fonts/Schibsted-Grotesk/
