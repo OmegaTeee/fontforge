@@ -25,6 +25,7 @@ from metrics import extract_metrics
 from kern import extract_kerning, apply_spacing, parse_spacing_rules
 from hint import autohint, dehint, collect_ttfs
 from variable import info as variable_info_fn, is_variable, from_statics as variable_from_statics, to_ufo
+from baseline import shift_glyphs, shift_metrics, fit_win_metrics
 
 from fontTools.ttLib import TTFont
 
@@ -436,6 +437,58 @@ def build_variable(family: str, output_name: str | None = None, axis_tag: str = 
         "masters": [f.name for f in ttfs],
         "output": out.name,
         "output_size": out.stat().st_size,
+    }, indent=2)
+
+
+@mcp.tool()
+def shift_baseline(
+    family: str,
+    shift: int,
+    fit_win_metrics_flag: bool = True,
+    suffix: str = "-shifted",
+) -> str:
+    """Translate all glyphs vertically and sync every vertical metric.
+
+    Moves glyph outlines by `shift` font units and adjusts hhea + OS/2 typo
+    metrics to match. Also refits OS/2 win metrics to cover the full glyph
+    bbox so Windows GDI doesn't clip descenders (on by default).
+
+    Args:
+        family: Font family name.
+        shift: Y-translation in font units. Negative = down, positive = up.
+        fit_win_metrics_flag: Refit win metrics to glyph bbox (default True).
+        suffix: Output filename suffix (default '-shifted').
+    """
+    family_path = _family_dir(family)
+    if not family_path:
+        return json.dumps({"error": f"Family '{family}' not found"})
+
+    ttfs = [f for f in collect_ttfs(family_path)
+            if f.parent == family_path]  # shallow only — skip derivative subdirs
+    if not ttfs:
+        return json.dumps({"error": f"No TTF files directly under {family}"})
+
+    results = []
+    for f in ttfs:
+        try:
+            font = TTFont(f)
+            if shift != 0:
+                shift_glyphs(font, shift)
+                shift_metrics(font, shift)
+            if fit_win_metrics_flag:
+                fit_win_metrics(font)
+            out = f.with_stem(f.stem + suffix)
+            font.save(str(out))
+            font.close()
+            results.append({"input": f.name, "output": out.name, "shift": shift})
+        except Exception as e:
+            results.append({"input": f.name, "error": str(e)})
+
+    return json.dumps({
+        "family": family,
+        "shift": shift,
+        "fit_win_metrics": fit_win_metrics_flag,
+        "results": results,
     }, indent=2)
 
 

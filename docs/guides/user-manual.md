@@ -198,6 +198,31 @@ python scripts/hint.py fonts/Burbank/ --dehint
 
 Removes `prep`, `fpgm`, `cvt `, `hdmx`, `LTSH`, `VDMX` tables plus per-glyph instruction programs. Useful before re-hinting with different settings, or for debugging rendering issues attributable to bad hints.
 
+### baseline.py — Baseline Shift & Vertical Metrics
+
+Translate glyphs vertically and keep all three sets of vertical metrics (OS/2 typo, OS/2 win, hhea) in sync. Also refits OS/2 win metrics to cover the full glyph bbox so Windows GDI doesn't clip descenders.
+
+**Shift a family down by 40 units:**
+```bash
+python scripts/baseline.py fonts/Burbank/BurbankText-Regular.ttf --shift -40
+```
+
+Negative shift moves glyphs down, positive moves up. The shift applies to `glyf` contours and composite-component offsets. `hhea.ascender/descender` and `OS/2.sTypoAscender/Descender` move by the same amount. Win metrics are refit automatically.
+
+**Refit win metrics only (no shift):**
+```bash
+python scripts/baseline.py fonts/Family/ --fit-win-metrics
+```
+
+Sets `usWinAscent/Descent` to the glyph bbox extremes. Useful for any vendor font whose bbox already exceeds its declared win metrics (very common — that's what was silently clipping Burbank descenders on Windows).
+
+**Batch a whole family:**
+```bash
+python scripts/baseline.py fonts/Burbank/ --shift -40 -o fonts/Burbank/shifted
+```
+
+**Important order-of-operations:** shift *before* hinting. ttfautohint's instructions are computed for specific glyph coordinates, so shift first → hint → subset → WOFF2. The [Pipeline Example](#pipeline-example-ship-a-family-to-web) below shows the full order.
+
 ### batch.py — Multi-Family Operations
 
 Run any operation across all (or selected) font families.
@@ -275,6 +300,7 @@ Add to your Claude Code MCP settings (`.claude/settings.json` or project `.mcp.j
 | `hint_family` | Auto-hint (or dehint) all TTFs in a family via ttfautohint |
 | `variable_info` | Report axes and named instances of a variable font |
 | `build_variable` | Interpolate a family's static masters into a variable font |
+| `shift_baseline` | Translate glyphs vertically + sync all three metric sets |
 
 ### Example MCP Usage
 
@@ -330,10 +356,14 @@ for f in fonts/Burbank/BurbankText-*.ttf; do
   python scripts/kern.py "$f" --dump -o "fonts/Burbank/kerning/$(basename "$f" .ttf).csv"
 done
 
-# 2. Auto-hint all 8 statics with strong stems for Windows rendering
-python scripts/hint.py fonts/Burbank/ -o fonts/Burbank/hinted --strong
+# 2. (Optional) Shift baseline. Does the family sit too high against your
+#    UI? Negative shift moves glyphs down; also refits win metrics.
+python scripts/baseline.py fonts/Burbank/ --shift -40 -o fonts/Burbank/shifted
 
-# 3. Build latin+latin-ext WOFF2s from the hinted sources
+# 3. Auto-hint with strong stems for Windows rendering
+python scripts/hint.py fonts/Burbank/shifted/ -o fonts/Burbank/hinted --strong
+
+# 4. Build latin+latin-ext WOFF2s from the hinted sources
 python scripts/build.py fonts/Burbank/hinted/ \
   --format woff2 --subset "latin+latin-ext" \
   --output-dir fonts/Burbank/web
