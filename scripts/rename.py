@@ -292,7 +292,7 @@ def print_results(results: list[dict]) -> None:
     print(f"\nTotal: {len(results)} files processed")
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Normalize font filenames")
     parser.add_argument("path", type=Path, help="Font file or directory to process")
     parser.add_argument("--apply", action="store_true", help="Apply renames (default is dry run)")

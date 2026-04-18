@@ -24,6 +24,7 @@ FONT_EXTENSIONS = {".ttf"}
 
 
 def find_ttfautohint() -> str:
+    """Locate the ttfautohint binary or exit with an install hint."""
     path = shutil.which("ttfautohint")
     if not path:
         print("Error: ttfautohint not found. Install via `brew install ttfautohint`.",
@@ -50,6 +51,9 @@ def autohint(
         f"--fallback-script={fallback_script}",
     ]
     if strong:
+        # DGW = Default rendering, GDI ClearType, DirectWrite ClearType.
+        # Strong stems snap to pixel boundaries in those modes for crisper
+        # small-size rendering at the cost of shape fidelity.
         cmd.append("--strong-stem-width=DGW")
     if composites:
         cmd.append("--composites")
@@ -75,11 +79,13 @@ def autohint(
 def dehint(input_path: Path, output_path: Path) -> bool:
     """Strip TrueType instruction tables to produce an unhinted font."""
     font = TTFont(input_path)
-    # Tables that hold hinting instructions / programs / control values
+    # prep = pre-program, fpgm = font program, cvt = control values;
+    # hdmx/LTSH/VDMX are derived device-metric caches that only make sense
+    # when hints exist. Dropping all of them yields a clean unhinted TTF.
     for tag in ("prep", "fpgm", "cvt ", "hdmx", "LTSH", "VDMX"):
         if tag in font:
             del font[tag]
-    # Clear per-glyph instructions
+    # Composite glyphs have no program attr, so the hasattr guard matters.
     if "glyf" in font:
         glyf = font["glyf"]
         for name in font.getGlyphOrder():
@@ -93,6 +99,7 @@ def dehint(input_path: Path, output_path: Path) -> bool:
 
 
 def collect_ttfs(target: Path) -> list[Path]:
+    """Resolve a file or directory to a sorted list of .ttf paths."""
     if target.is_file():
         return [target] if target.suffix.lower() in FONT_EXTENSIONS else []
     return sorted(
@@ -109,7 +116,7 @@ def parse_range(spec: str) -> tuple[int, int]:
     return int(lo), int(hi)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Auto-hint TTF files via ttfautohint")
     parser.add_argument("input", type=Path, help="Font file or directory")
     parser.add_argument("-o", "--output-dir", type=Path, default=None,

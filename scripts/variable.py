@@ -22,10 +22,12 @@ from fontTools.designspaceLib import DesignSpaceDocument
 
 
 def is_variable(font: TTFont) -> bool:
+    """True if the font carries an fvar table (i.e. is a variable font)."""
     return "fvar" in font
 
 
 def info(font_path: Path) -> None:
+    """Print a summary of axes and named instances for a variable font."""
     font = TTFont(font_path)
     if not is_variable(font):
         print(f"{font_path.name}: not a variable font (no fvar table)")
@@ -43,6 +45,8 @@ def info(font_path: Path) -> None:
 
     print(f"  Instances ({len(fvar.instances)}):")
     for inst in fvar.instances:
+        # (3, 1, 0x409) = Windows/Unicode BMP/English-US, the standard
+        # encoding for the human-readable subfamily label.
         record = name.getName(inst.subfamilyNameID, 3, 1, 0x409)
         label = str(record) if record else f"#{inst.subfamilyNameID}"
         coords = ", ".join(f"{k}={v:g}" for k, v in inst.coordinates.items())
@@ -77,6 +81,7 @@ def _resolve_instance(font: TTFont, spec: str) -> tuple[dict[str, float], str]:
 
 
 def instance(font_path: Path, spec: str, output: Path | None) -> Path:
+    """Extract a static instance from a VF by named style or axis coordinates."""
     font = TTFont(font_path)
     if not is_variable(font):
         raise ValueError(f"{font_path.name} is not a variable font")
@@ -102,6 +107,8 @@ def from_statics(static_paths: list[Path], output: Path, axis_tag: str = "wght")
         masters.append((p, weight))
         font.close()
 
+    # varLib expects masters ordered by axis position and a default that
+    # falls within [min, max]; sorting by weight here satisfies both.
     masters.sort(key=lambda m: m[1])
     weights = [w for _, w in masters]
     default_weight = _pick_default(weights)
@@ -153,6 +160,8 @@ def to_ufo(font_path: Path, output: Path | None) -> Path:
     ufo = ufoLib2.Font()
     extractor.extractUFO(str(sanitized_path), ufo)
     out = output or font_path.with_suffix(".ufo")
+    # UFO is a directory bundle; ufoLib2's overwrite won't clear a stale
+    # layout, so wipe any previous UFO at the target path first.
     if out.exists():
         shutil.rmtree(out)
     ufo.save(out, overwrite=True)
@@ -163,7 +172,7 @@ def to_ufo(font_path: Path, output: Path | None) -> Path:
     return out
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Variable font operations")
     parser.add_argument("-o", "--output", type=Path, default=None,
                         help="Output path (derived from input by default)")

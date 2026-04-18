@@ -35,6 +35,7 @@ WIDTH_CLASS_NAMES = {
 
 
 def get_name(name_table, name_id: int) -> str:
+    """Return the first decodable name record with the given ID, or ''."""
     for record in name_table.names:
         if record.nameID == name_id:
             try:
@@ -84,7 +85,9 @@ def extract_metrics(font_path: Path) -> dict:
 
     info = {"file": font_path.name, "path": str(font_path)}
 
-    # Name table entries
+    # Name table IDs per OpenType spec:
+    # 0=copyright, 1=family, 2=subfamily, 4=full, 5=version, 9=designer,
+    # 13=license, 16/17=typographic family/subfamily (preferred for VFs).
     name_table = font["name"]
     info["family"] = get_name(name_table, 16) or get_name(name_table, 1)
     info["subfamily"] = get_name(name_table, 17) or get_name(name_table, 2)
@@ -164,6 +167,7 @@ def extract_metrics(font_path: Path) -> dict:
 
 
 def _fmt_size(n: int) -> str:
+    """Format bytes as human-readable size."""
     for unit in ("B", "KB", "MB"):
         if n < 1024:
             return f"{n:.1f}{unit}" if unit != "B" else f"{n}{unit}"
@@ -247,6 +251,7 @@ def print_comparison(metrics_list: list[dict]) -> None:
 
 
 def collect_fonts(target: Path) -> list[Path]:
+    """Resolve a file or directory to a sorted list of supported font paths."""
     if target.is_file():
         return [target] if target.suffix.lower() in FONT_EXTENSIONS else []
     return sorted(
@@ -255,7 +260,7 @@ def collect_fonts(target: Path) -> list[Path]:
     )
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Extract font metrics")
     parser.add_argument("path", type=Path, help="Font file or directory")
     parser.add_argument("--json", action="store_true", help="Output as JSON")

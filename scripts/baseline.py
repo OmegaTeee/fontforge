@@ -23,7 +23,13 @@ FONT_EXTENSIONS = {".ttf"}
 
 
 def shift_glyphs(font: TTFont, shift: int) -> None:
-    """Translate all glyf contours (and composite offsets) by `shift` y-units."""
+    """Translate all glyf contours by `shift` y-units.
+
+    Composites inherit the shift automatically because their base glyphs'
+    coordinates have already moved. Adding `shift` to `component.y` on top
+    of that would double-shift the composite (e.g. Aacute ending up at
+    -80u when we asked for -40u), so composites are deliberately skipped.
+    """
     if "glyf" not in font:
         raise ValueError("Only TTF (glyf) fonts are supported; got CFF/OTF")
 
@@ -34,9 +40,6 @@ def shift_glyphs(font: TTFont, shift: int) -> None:
             for i, (x, y) in enumerate(glyph.coordinates):
                 glyph.coordinates[i] = (x, y + shift)
             _recompute_bounds(glyph)
-        elif glyph.isComposite():
-            for component in glyph.components:
-                component.y += shift
 
 
 def _recompute_bounds(glyph) -> None:
@@ -83,6 +86,9 @@ def fit_win_metrics(font: TTFont) -> tuple[int, int]:
     head.xMin, head.yMin, head.xMax, head.yMax = xMin, yMin, xMax, yMax
 
     os2 = font["OS/2"]
+    # usWinAscent/Descent are unsigned magnitudes: descent below the baseline
+    # is stored as a positive number, so we negate yMin. We only grow the
+    # values (via max) so an already-generous clip region isn't tightened.
     os2.usWinAscent = max(os2.usWinAscent, yMax)
     os2.usWinDescent = max(os2.usWinDescent, -yMin)
     return os2.usWinAscent, os2.usWinDescent
@@ -95,6 +101,7 @@ def process_font(
     do_fit_win: bool,
     verbose: bool,
 ) -> bool:
+    """Apply shift and/or win-metrics refit to one font, save to output. Returns True on success."""
     try:
         font = TTFont(input_path)
     except Exception as e:
@@ -128,6 +135,7 @@ def process_font(
 
 
 def collect_ttfs(target: Path) -> list[Path]:
+    """Resolve a file or directory to a sorted list of .ttf paths."""
     if target.is_file():
         return [target] if target.suffix.lower() in FONT_EXTENSIONS else []
     return sorted(
@@ -136,7 +144,7 @@ def collect_ttfs(target: Path) -> list[Path]:
     )
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Baseline shift + vertical metric tuning")
     parser.add_argument("input", type=Path, help="Font file or directory")
     parser.add_argument("-o", "--output-dir", type=Path, default=None,

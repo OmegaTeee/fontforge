@@ -23,6 +23,7 @@ from fontTools.ttLib import TTFont
 from fontTools.feaLib.builder import addOpenTypeFeatures
 
 
+# None means "every glyph in the font"; expanded lazily in resolve_glyphs.
 CLASS_PRESETS = {
     "uc": list(string.ascii_uppercase),
     "lc": list(string.ascii_lowercase),
@@ -101,6 +102,8 @@ def _flatten_pairpos(subtable) -> list[tuple[str, str, int]]:
                     pairs.append((left, record.SecondGlyph, value))
 
     elif subtable.Format == 2:
+        # Format 2 stores kerning as a class x class matrix; flatten by
+        # taking the Cartesian product of each class pair with a nonzero value.
         class1 = _class_def_to_groups(subtable.ClassDef1, subtable.Coverage.glyphs)
         class2 = _class_def_to_groups(subtable.ClassDef2)
         for i, class1_record in enumerate(subtable.Class1Record):
@@ -116,6 +119,7 @@ def _flatten_pairpos(subtable) -> list[tuple[str, str, int]]:
 
 
 def _read_xadvance(value_record) -> int:
+    """Pull XAdvance off a GPOS ValueRecord, treating missing/zero as 0."""
     return getattr(value_record, "XAdvance", 0) or 0 if value_record else 0
 
 
@@ -138,6 +142,7 @@ def _class_def_to_groups(class_def, coverage_glyphs: list[str] | None = None) ->
 
 
 def dump_kerning(font_path: Path, output: Path | None) -> int:
+    """Write all kerning pairs to `output` (or stdout) as CSV. Returns pair count."""
     font = TTFont(font_path)
     pairs = extract_kerning(font)
     font.close()
@@ -166,6 +171,9 @@ def apply_kerning(font_path: Path, csv_path: Path, output: Path | None) -> int:
     valid = [(l, r, v) for l, r, v in rows if l in glyph_set and r in glyph_set]
     skipped = len(rows) - len(valid)
 
+    # Synthesize a minimal .fea and let feaLib compile it into GPOS. Going
+    # through .fea (rather than writing GPOS structs directly) handles class
+    # building, lookup indexing, and script/language registration for us.
     fea_lines = ["languagesystem DFLT dflt;", "languagesystem latn dflt;",
                  "feature kern {"]
     for left, right, value in valid:
@@ -240,6 +248,7 @@ def resolve_glyphs(pattern: str, glyph_order: list[str]) -> list[str]:
 
 
 def apply_spacing(font_path: Path, spec: str, output: Path | None) -> int:
+    """Apply `spec` ('lc:+10,A-Z:-5') to hmtx advance widths and save. Returns count touched."""
     font = TTFont(font_path)
     hmtx = font["hmtx"]
     glyph_order = font.getGlyphOrder()
@@ -250,6 +259,8 @@ def apply_spacing(font_path: Path, spec: str, output: Path | None) -> int:
         glyphs = resolve_glyphs(pattern, glyph_order)
         for g in glyphs:
             advance, lsb = hmtx[g]
+            # Clamp to >=0: hmtx advance width is uint16, negative advances
+            # would wrap to a huge positive value and wreck layout.
             hmtx[g] = (max(0, advance + delta), lsb)
             touched += 1
         print(f"  {pattern}: {len(glyphs)} glyph(s), advance {delta:+d}")
@@ -262,7 +273,7 @@ def apply_spacing(font_path: Path, spec: str, output: Path | None) -> int:
     return touched
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Kerning and spacing utilities")
     parser.add_argument("font", type=Path, help="Font file (.ttf/.otf)")
     parser.add_argument("-o", "--output", type=Path, default=None,

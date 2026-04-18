@@ -98,8 +98,10 @@ def convert_font(
                 del font[tag]
 
         options = SubsetOptions()
-        options.layout_features = ["*"]  # Keep all OpenType features
-        options.name_IDs = ["*"]         # Keep all name records
+        options.layout_features = ["*"]
+        options.name_IDs = ["*"]
+        # Preserve the .notdef outline so the subset font still renders a
+        # visible box for missing glyphs instead of a zero-width blank.
         options.notdef_outline = True
         subsetter = Subsetter(options=options)
         subsetter.populate(unicodes=codepoints)
@@ -164,7 +166,7 @@ def collect_fonts(target: Path) -> list[Path]:
     )
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Build/convert font files")
     parser.add_argument("input", type=Path, help="Font file or directory")
     parser.add_argument("--format", "-f", default="woff2",

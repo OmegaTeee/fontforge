@@ -161,7 +161,7 @@ def batch_metrics(
         batch_report({n: families[n] for n in all_metrics})
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Batch font operations")
     parser.add_argument("path", type=Path, help="Fonts directory")
     parser.add_argument("--families", "-f", default=None,
