@@ -89,6 +89,14 @@ def convert_font(
 
     # Apply subsetting if requested
     if codepoints:
+        # Drop tables fontTools can't subset. They'd otherwise emit a
+        # "NOT subset; dropped" warning on every font. None are useful for
+        # web output: morx/mort/feat are Apple-only layout, FFTM is a
+        # FontForge-internal build timestamp.
+        for tag in ("morx", "mort", "feat", "FFTM"):
+            if tag in font:
+                del font[tag]
+
         options = SubsetOptions()
         options.layout_features = ["*"]  # Keep all OpenType features
         options.name_IDs = ["*"]         # Keep all name records

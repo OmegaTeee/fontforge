@@ -139,12 +139,13 @@ def to_ufo(font_path: Path, output: Path | None) -> Path:
     import extractor
     import ufoLib2
 
-    # Extractor chokes on non-standard legacy `kern` tables (common in older
-    # fonts like Burbank). GPOS holds the modern kerning, so drop `kern` first.
+    from kern import strip_nonstandard_kern
+
+    # extractor chokes on legacy Apple kern subtables; strip them first.
+    # GPOS holds the modern kerning, so nothing real is lost.
     font = TTFont(font_path)
     sanitized_path = font_path
-    if "kern" in font and _has_bad_kern(font):
-        del font["kern"]
+    if strip_nonstandard_kern(font):
         sanitized_path = Path(f"/tmp/{font_path.stem}-nokern{font_path.suffix}")
         font.save(str(sanitized_path))
     font.close()
@@ -160,14 +161,6 @@ def to_ufo(font_path: Path, output: Path | None) -> Path:
         sanitized_path.unlink(missing_ok=True)
     print(f"Extracted {font_path.name} -> {out} ({len(ufo)} glyphs)")
     return out
-
-
-def _has_bad_kern(font: TTFont) -> bool:
-    """True if the font's `kern` table has non-standard subtables."""
-    for st in font["kern"].kernTables:
-        if not hasattr(st, "kernTable") or not hasattr(st, "version"):
-            return True
-    return False
 
 
 def main():

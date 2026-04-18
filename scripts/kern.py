@@ -31,6 +31,30 @@ CLASS_PRESETS = {
 }
 
 
+def has_nonstandard_kern(font: TTFont) -> bool:
+    """True if the font's `kern` table has unrecognized subtable formats.
+
+    Older vendor fonts (e.g. Burbank) ship a legacy Apple kern subtable that
+    fontTools parses as `KernTable_format_unkown` without the `kernTable` /
+    `version` attributes. GPOS carries the modern kerning so the legacy
+    table can be safely dropped for web output and UFO extraction.
+    """
+    if "kern" not in font:
+        return False
+    for subtable in font["kern"].kernTables:
+        if not hasattr(subtable, "kernTable") or not hasattr(subtable, "version"):
+            return True
+    return False
+
+
+def strip_nonstandard_kern(font: TTFont) -> bool:
+    """Delete the `kern` table if it has unrecognized subtables. Returns True if dropped."""
+    if has_nonstandard_kern(font):
+        del font["kern"]
+        return True
+    return False
+
+
 def extract_kerning(font: TTFont) -> list[tuple[str, str, int]]:
     """Return flat list of (left, right, value) kerning pairs from kern + GPOS."""
     pairs: list[tuple[str, str, int]] = []
