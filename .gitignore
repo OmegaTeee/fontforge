@@ -1,0 +1,10 @@
+venv/
+__pycache__/
+*.pyc
+.mypy_cache/
+.DS_Store
+.idea/
+
+# Nested font repos with their own git history — manage separately
+fonts/GoogleSans-Code/
+fonts/Schibsted-Grotesk/
