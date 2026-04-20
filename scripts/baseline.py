@@ -39,17 +39,7 @@ def shift_glyphs(font: TTFont, shift: int) -> None:
         if glyph.numberOfContours > 0:
             for i, (x, y) in enumerate(glyph.coordinates):
                 glyph.coordinates[i] = (x, y + shift)
-            _recompute_bounds(glyph)
-
-
-def _recompute_bounds(glyph) -> None:
-    """Recompute glyph bounding box after coordinate transform."""
-    if glyph.numberOfContours <= 0:
-        return
-    xs = [x for x, _ in glyph.coordinates]
-    ys = [y for _, y in glyph.coordinates]
-    glyph.xMin, glyph.xMax = min(xs), max(xs)
-    glyph.yMin, glyph.yMax = min(ys), max(ys)
+            glyph.recalcBounds(glyf)
 
 
 def shift_metrics(font: TTFont, shift: int) -> None:
@@ -70,13 +60,20 @@ def fit_win_metrics(font: TTFont) -> tuple[int, int]:
     Returns the (ascent, descent) applied. Without this, any glyph whose
     extent exceeds the current win metrics gets clipped on Windows GDI.
     """
-    # Recompute head bbox from current glyph data
+    # Refresh every glyph's cached bounds before reading. Composites' stored
+    # xMin/yMin/xMax/yMax stay pinned to the pre-shift values they were loaded
+    # with — fontTools only recomputes them at save time — so reading them raw
+    # would miss any extreme that only propagates through a scaled component.
+    # recalcBounds handles simples and composites uniformly; boundsDone memoizes
+    # across the composite graph so a shared base is only measured once.
     head = font["head"]
     glyf = font["glyf"]
+    bounds_done: set[str] = set()
     xMin = yMin = 1 << 31
     xMax = yMax = -(1 << 31)
     for name in font.getGlyphOrder():
         g = glyf[name]
+        g.recalcBounds(glyf, boundsDone=bounds_done)
         if g.numberOfContours == 0:
             continue
         if g.xMin < xMin: xMin = g.xMin
