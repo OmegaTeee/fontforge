@@ -39,14 +39,9 @@ mcp = FastMCP("fontforge", instructions=(
 ))
 
 
-def _resolve_fonts_dir() -> Path:
-    """Resolve the fonts directory from env or default."""
-    return DEFAULT_FONTS_DIR
-
-
 def _family_dir(family: str) -> Path | None:
     """Get the directory for a font family, or None if not found."""
-    fonts_dir = _resolve_fonts_dir()
+    fonts_dir = DEFAULT_FONTS_DIR
     path = fonts_dir / family
     if path.is_dir():
         return path
@@ -64,7 +59,7 @@ def list_families(detail: bool = False) -> str:
     Args:
         detail: If true, include file counts and formats for each family.
     """
-    fonts_dir = _resolve_fonts_dir()
+    fonts_dir = DEFAULT_FONTS_DIR
     families = []
 
     for child in sorted(fonts_dir.iterdir()):
@@ -216,7 +211,7 @@ def search_fonts(query: str) -> str:
     Args:
         query: Search term (matches against family name, subfamily, designer, full name).
     """
-    fonts_dir = _resolve_fonts_dir()
+    fonts_dir = DEFAULT_FONTS_DIR
     query_lower = query.lower()
     matches = []
 

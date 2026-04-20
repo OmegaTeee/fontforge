@@ -148,10 +148,14 @@ def main() -> None:
                         help="Output directory (default: alongside input with -shifted suffix)")
     parser.add_argument("--shift", type=int, default=0,
                         help="Y-translation in font units. Negative = down, positive = up")
-    parser.add_argument("--fit-win-metrics", action="store_true",
-                        help="Refit OS/2 win metrics to cover the glyph bbox (prevents Windows clipping)")
-    parser.add_argument("--no-fit-win", action="store_true",
-                        help="Skip auto-fit of win metrics (by default fit runs whenever --shift is nonzero)")
+    # --fit-win-metrics and --no-fit-win are mutually exclusive: one asks to
+    # force the refit, the other asks to skip it. argparse raises cleanly on
+    # both-supplied rather than silently letting the explicit-on win.
+    win_group = parser.add_mutually_exclusive_group()
+    win_group.add_argument("--fit-win-metrics", action="store_true",
+                           help="Refit OS/2 win metrics to cover the glyph bbox (prevents Windows clipping)")
+    win_group.add_argument("--no-fit-win", action="store_true",
+                           help="Skip auto-fit of win metrics (by default fit runs whenever --shift is nonzero)")
     parser.add_argument("-v", "--verbose", action="store_true")
 
     args = parser.parse_args()
@@ -159,6 +163,18 @@ def main() -> None:
     if args.shift == 0 and not args.fit_win_metrics:
         print("Error: nothing to do — pass --shift N or --fit-win-metrics", file=sys.stderr)
         sys.exit(2)
+
+    if args.shift != 0 and args.no_fit_win:
+        # Outlines move but usWinAscent/Descent stay pinned to pre-shift
+        # magnitudes, so any descender that crossed the old clip region is
+        # now invisible on Windows GDI. Warn loudly — this combo is only
+        # correct when the caller is about to refit win metrics elsewhere.
+        print(
+            f"Warning: --shift {args.shift:+d} with --no-fit-win leaves OS/2 "
+            "usWinAscent/Descent unchanged. Descenders that now extend past "
+            "the original win clip region will render truncated on Windows GDI.",
+            file=sys.stderr,
+        )
 
     if not args.input.exists():
         print(f"Error: {args.input} does not exist", file=sys.stderr)

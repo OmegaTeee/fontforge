@@ -61,25 +61,21 @@ Option B is safer. Either way, add a comment — "why is this correct for compos
 
 ## Suggestions
 
-### `scripts/baseline.py:156–157, 175` — `--no-fit-win` leaves win metrics stale after a shift
+### ✅ `scripts/baseline.py:156–157, 175` — `--no-fit-win` leaves win metrics stale after a shift (**resolved 2026-04-20**)
 
-If the user passes `--shift -40 --no-fit-win`, outlines move down 40u but `usWinDescent` stays at its original magnitude. On Windows GDI the font will now clip descenders that just moved below the old clip region. Unusual flag combo, but the current code silently produces a subtly broken font. Either warn, or document in `--no-fit-win` help that it's meant for no-shift workflows only.
+`main()` now prints a stderr warning when `args.shift != 0 and args.no_fit_win`, explicitly naming the Windows-GDI clipping risk. The combo still runs (no hard-fail) because there are legitimate scripted pipelines that shift and refit elsewhere.
 
-### `scripts/baseline.py:175` — conflicting flag resolution
+### ✅ `scripts/baseline.py:175` — conflicting flag resolution (**resolved 2026-04-20**)
 
-```python
-do_fit_win = args.fit_win_metrics or (args.shift != 0 and not args.no_fit_win)
-```
+`--fit-win-metrics` and `--no-fit-win` are now grouped via `argparse.add_mutually_exclusive_group()` — passing both yields a clean argparse error instead of silently preferring the explicit-on. Verified by CLI smoke test.
 
-If the user passes both `--fit-win-metrics` and `--no-fit-win`, the explicit-on wins silently. `argparse.add_mutually_exclusive_group()` would error cleanly. Low-priority nit.
+### ✅ `mcp-server/server.py:42–44, 501–503` — `_resolve_fonts_dir` is a pass-through (**resolved 2026-04-20**)
 
-### `mcp-server/server.py:42–44, 501–503` — `_resolve_fonts_dir` is a pass-through
+Wrapper removed. The three call sites (`_family_dir`, `list_families`, `search_fonts`) now read `DEFAULT_FONTS_DIR` directly. `main` still mutates the global when `--fonts-dir` is passed; since that mutation happens before `mcp.run()`, all subsequent tool invocations see the updated value. A `FastMCP`-bound config would be cleaner still, but that's a structural change out of scope for this pass.
 
-`_resolve_fonts_dir` just returns `DEFAULT_FONTS_DIR`, and `main` mutates that global. Drop the wrapper and read the global directly (four call sites, all in this file), or hold the path on the `FastMCP` instance / a small `Config` dataclass so the global mutation disappears. Not blocking.
+### ✅ `CLAUDE.md:19–24` — pipeline-order claim (**resolved 2026-04-20**)
 
-### `CLAUDE.md:19–24` — pipeline-order claim
-
-The doc says shift/spacing must happen before hinting. True and worth preserving. But the second commit's snapshot (`fonts/Burbank/hinted/BurbankText-*-shifted-hinted.ttf`) only works because you *did* re-hint after shifting. If a future maintainer shifts without re-hinting, the existing `-hinted` artifacts silently become wrong. Consider adding one sentence: "If you re-shift an already-hinted family, delete `hinted/` and `web/` and re-run the pipeline from step 2."
+Added a paragraph after the pipeline-order list: re-shifting an already-hinted family requires deleting `fonts/<Family>/hinted/` and `fonts/<Family>/web/` and rerunning from step 2, so stale hinting doesn't silently ship against new outlines.
 
 ---
 

@@ -24,6 +24,8 @@ When preparing a family for web, always in this order:
 
 Hinting instructions are computed for specific glyph coordinates, so any shift/spacing must happen before hinting. Subsetting strips tables fontTools can't preserve, so it runs last.
 
+**If you re-shift an already-hinted family**, delete `fonts/<Family>/hinted/` and `fonts/<Family>/web/` and rerun from step 2. The existing artifacts were hinted against the pre-shift coordinates; leaving them in place ships a font whose hinting no longer matches its outlines.
+
 ## Known gotchas (baked into the scripts)
 
 - **Non-standard legacy `kern` tables** appear in older vendor fonts (Burbank and others). fontTools parses them as `KernTable_format_unkown`. `kern.has_nonstandard_kern` / `kern.strip_nonstandard_kern` detect/drop them. GPOS carries modern kerning so nothing real is lost.
