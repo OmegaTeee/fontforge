@@ -1,0 +1,51 @@
+# Tool configuration only. Runtime dependencies live in requirements.txt;
+# dev dependencies live in requirements-dev.txt. This file intentionally
+# omits the [project] table so FontForge stays a script-collection, not a
+# distributable package.
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [
+    "venv",
+    "fonts",
+    "docs",
+]
+
+[tool.ruff.lint]
+# E/W: pycodestyle  F: pyflakes  I: isort  UP: pyupgrade  B: bugbear  SIM: simplify
+select = ["E", "F", "I", "W", "UP", "B", "SIM"]
+ignore = [
+    "E501",  # line-too-long: formatter handles this; ignore stragglers
+    "B008",  # function call in default arg: fine for argparse-style code
+    "SIM108", # ternary suggestions: not always more readable
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E402"]  # tests may need sys.path setup before imports
+"scripts/__init__.py" = ["F401"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Mirror the runtime trick used by mcp-server/server.py: bare-name imports
+# of scripts (e.g. `import rename`) only work if `scripts/` is on sys.path.
+pythonpath = ["scripts"]
+addopts = [
+    "-ra",            # show short summary for all non-passing outcomes
+    "--strict-markers",
+    "--strict-config",
+]
+markers = [
+    # Integration tests load tests/fixtures/AtkinsonHyperlegibleNext-Regular.ttf
+    # and exercise scripts against a real TTF. Run unit-only with:
+    #   pytest -m "not integration"
+    "integration: tests that load the fixture font (slower; ~50-100ms each)",
+]
+filterwarnings = [
+    # fontTools occasionally emits deprecation warnings from older font files;
+    # keep them visible but don't fail on them.
+    "default",
+]
