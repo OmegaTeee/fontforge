@@ -1,0 +1,14 @@
+{
+  "recommendations": [
+    // Python toolchain
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "charliermarsh.ruff",
+
+    // Font tooling — keep these from the existing recommendation set
+    "miraprobemv.fontforge-glyph-preview",
+    "xiangdong-zeng.fontforge-vscode",
+    "ctcuff.font-preview",
+    "nkokhelox.svg-font-previewer"
+  ]
+}

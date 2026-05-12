@@ -1,0 +1,97 @@
+{
+  // ── Python environment ──────────────────────────────────
+  // FontForge lives at the workspace root with its own venv. Always prefer
+  // venv/bin/python — never the system Python (see CLAUDE.md).
+  "python.defaultInterpreterPath": "${workspaceFolder}/venv/bin/python",
+  "python-envs.pythonProjects": [
+    { "path": "${workspaceFolder}" }
+  ],
+
+  // ── Static analysis (Pylance) ───────────────────────────
+  "python.analysis.typeCheckingMode": "standard",
+  "python.analysis.autoSearchPaths": true,
+  // scripts/ and mcp-server/ are NOT packages — they're flat directories
+  // imported by bare name (see CLAUDE.md). Tell Pylance to look there too,
+  // otherwise `import rename` shows as unresolved in the editor.
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}",
+    "${workspaceFolder}/scripts",
+    "${workspaceFolder}/mcp-server"
+  ],
+
+  // ── Testing (pytest) ────────────────────────────────────
+  // pytest config lives in pyproject.toml; pythonpath = ["scripts"] there
+  // mirrors the editor's extraPaths above.
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.testing.cwd": "${workspaceFolder}",
+  "python.testing.pytestPath": "${workspaceFolder}/venv/bin/pytest",
+  "python.testing.pytestArgs": ["tests"],
+
+  // ── Formatting & linting (ruff) ─────────────────────────
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit",
+      "source.fixAll.ruff": "explicit"
+    }
+  },
+  "ruff.configuration": "${workspaceFolder}/pyproject.toml",
+  "ruff.importStrategy": "fromEnvironment",
+  "ruff.nativeServer": "on",
+
+  // ── Editor / terminal ───────────────────────────────────
+  "terminal.integrated.cwd": "${workspaceFolder}",
+  "terminal.integrated.enablePersistentSessions": true,
+  "terminal.integrated.env.osx": {
+    "PATH": "${workspaceFolder}/venv/bin:${env:PATH}",
+    "USERHOME": "/Users/visualval"
+  },
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.pytest_cache": true,
+    "**/.mypy_cache": true,
+    "**/.ruff_cache": true
+  },
+  "files.watcherExclude": {
+    "**/venv/**": true,
+    "**/__pycache__/**": true,
+    "**/.pytest_cache/**": true,
+    "**/.ruff_cache/**": true,
+    "**/fonts/**": true
+  },
+  "search.exclude": {
+    "venv": true,
+    "fonts": true,
+    "**/__pycache__": true,
+    "**/.pytest_cache": true,
+    "**/.ruff_cache": true
+  },
+  "explorer.excludeGitIgnore": false,
+  "explorer.autoReveal": false,
+
+  // ── Chat / agent integrations ───────────────────────────
+  "chat.mcp.serverSampling": {
+    "prompthub-bridge": { "allowedModels": ["*"] }
+  },
+  "chat.tools.terminal.autoApprove": {
+    "${workspaceFolder}/venv/bin/python": true,
+    "${workspaceFolder}/venv/bin/pytest": true,
+    "${workspaceFolder}/venv/bin/ruff": true
+  },
+  "vscode-openai.baseUrl": "http://127.0.0.1:9090/v1",
+  "vscode-openai.conversation-configuration.api-headers": [
+    {
+      "Authorization": "Bearer sk-prompthub-vscode-001",
+      "Content-Type": "application/json",
+      "X-Client-Name": "vscode",
+      "X-Client-ID": "vscode"
+    }
+  ],
+  "vscode-openai.apiKey": "sk-prompthub-vscode-001",
+  "vscode-openai.defaultModel": "qwen3-4b-instruct-2507",
+  "markdown.styles": [".vscode/markdown.css"],
+  "qwen-code.provider": "api-key",
+  "qwen-code.apiKey": "sk-prompthub-qwen-code-001"
+}

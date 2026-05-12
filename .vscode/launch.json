@@ -1,0 +1,289 @@
+{
+  "version": "0.2.0",
+
+  // ── Inputs (prompted at debug-start) ──────────────────────
+  //
+  // Inputs let one launch config cover every font in the project. Most
+  // configs below reference these via ${input:id}, so VSCode pops up a
+  // prompt or picker each time you hit F5.
+  //
+  // To move fonts out of the workspace later, point the FONTFORGE_FONTS_DIR
+  // env var at the new location — fontsDir defaults to it when set, and
+  // falls back to ${workspaceFolder}/fonts otherwise. The MCP server
+  // already accepts --fonts-dir, so the same env var can drive both.
+  "inputs": [
+    {
+      "id": "fontsDir",
+      "type": "promptString",
+      "description": "Fonts root directory (Enter for default)",
+      "default": "${workspaceFolder}/fonts"
+    },
+    {
+      "id": "fontPath",
+      "type": "promptString",
+      "description": "Path to font file or family directory (e.g. fonts/Monofonto)"
+    },
+    {
+      "id": "outputDir",
+      "type": "promptString",
+      "description": "Output directory (Enter for script default)",
+      "default": ""
+    },
+    {
+      "id": "shiftAmount",
+      "type": "promptString",
+      "description": "Baseline shift in font units (negative = down)",
+      "default": "-40"
+    },
+    {
+      "id": "spacingRules",
+      "type": "promptString",
+      "description": "Spacing rules, e.g. 'lc:+10,A-Z:-5'",
+      "default": "lc:+10"
+    },
+    {
+      "id": "subsetSpec",
+      "type": "pickString",
+      "description": "Unicode subset",
+      "options": [
+        "latin",
+        "latin-ext",
+        "latin+latin-ext",
+        "latin+latin-ext+cyrillic",
+        "latin+latin-ext+greek",
+        "vietnamese",
+        "none"
+      ],
+      "default": "latin+latin-ext"
+    },
+    {
+      "id": "formatChoice",
+      "type": "pickString",
+      "description": "Output font format",
+      "options": ["woff2", "woff", "ttf", "otf"],
+      "default": "woff2"
+    },
+    {
+      "id": "hintRange",
+      "type": "promptString",
+      "description": "ttfautohint PPEM range (e.g. 8-50)",
+      "default": "8-50"
+    },
+    {
+      "id": "variableMode",
+      "type": "pickString",
+      "description": "Variable-font operation",
+      "options": ["--info", "--to-ufo"],
+      "default": "--info"
+    }
+  ],
+
+  // ── Configurations ────────────────────────────────────────
+  //
+  // Pattern notes:
+  //   - "justMyCode": false everywhere — lets you step into fontTools, which
+  //     is essential for diagnosing kerning/glyf/cmap issues here.
+  //   - "console": "integratedTerminal" — argparse errors and progress
+  //     prints render correctly; the debug console swallows colors.
+  //   - "cwd": "${workspaceFolder}" — scripts use relative paths in some
+  //     cases (e.g. baseline default output dir) and CLAUDE.md expects
+  //     pytest to run from root anyway.
+  //
+  // Tip: drop unused inputs by pressing Enter on the empty default.
+  "configurations": [
+    // ─── Generic ──────────────────────────────────────────
+    {
+      "name": "Python: Current File",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": false
+    },
+    {
+      "name": "Pytest: Current File",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["${file}", "-v"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": false
+    },
+    {
+      "name": "Pytest: All",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": [],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": false
+    },
+
+    // ─── Single-font scripts ──────────────────────────────
+    {
+      "name": "metrics.py — inspect font",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/metrics.py",
+      "args": ["${input:fontPath}"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": false
+    },
+    {
+      "name": "rename.py — preview renames",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/rename.py",
+      "args": ["${input:fontPath}", "--verbose"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": false
+    },
+    {
+      "name": "baseline.py — shift glyphs",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/baseline.py",
+      "args": ["${input:fontPath}", "--shift", "${input:shiftAmount}"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": false
+    },
+    {
+      "name": "kern.py — dump pairs",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/kern.py",
+      "args": ["${input:fontPath}", "--dump"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": false
+    },
+    {
+      "name": "kern.py — apply spacing",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/kern.py",
+      "args": ["${input:fontPath}", "--spacing", "${input:spacingRules}"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": false
+    },
+    {
+      "name": "hint.py — autohint",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/hint.py",
+      "args": [
+        "${input:fontPath}",
+        "--range", "${input:hintRange}",
+        "--strong"
+      ],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": false
+    },
+    {
+      "name": "build.py — convert + subset",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/build.py",
+      "args": [
+        "${input:fontPath}",
+        "--format", "${input:formatChoice}",
+        "--subset", "${input:subsetSpec}"
+      ],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": false
+    },
+    {
+      "name": "variable.py — info / to-ufo",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/variable.py",
+      "args": ["${input:variableMode}", "${input:fontPath}"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": false
+    },
+
+    // ─── Multi-family driver ─────────────────────────────
+    {
+      "name": "batch.py — metrics over fonts dir",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/batch.py",
+      "args": ["${input:fontsDir}", "--metrics", "--compare"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": false
+    },
+
+    // ─── MCP server ──────────────────────────────────────
+    //
+    // The MCP server is normally spoken to over stdio by a parent (Claude
+    // Code, etc.), so these two configs cover the two practical debug
+    // modes:
+    //
+    //   1. "MCP Server — standalone" runs server.py directly. argparse,
+    //      module-level side effects, and tool registration all execute
+    //      under the debugger. You won't see real requests because no
+    //      client is connected, but it's perfect for catching startup
+    //      crashes, import errors, and bad --fonts-dir handling.
+    //
+    //   2. "MCP Server — attach (port 5678)" hooks into a server already
+    //      running under debugpy. Start the server under debugpy first:
+    //
+    //          venv/bin/python -m debugpy --listen 5678 \
+    //            --wait-for-client mcp-server/server.py \
+    //            --fonts-dir "$FONTFORGE_FONTS_DIR"
+    //
+    //      Then hit F5 with this config selected. The parent (e.g. Claude
+    //      Code) drives real requests; you set breakpoints in any tool
+    //      handler and step through real traffic.
+    {
+      "name": "MCP Server — standalone",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/mcp-server/server.py",
+      "args": ["--fonts-dir", "${input:fontsDir}"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": false
+    },
+    {
+      "name": "MCP Server — attach (port 5678)",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": { "host": "localhost", "port": 5678 },
+      "justMyCode": false,
+      "pathMappings": [
+        { "localRoot": "${workspaceFolder}", "remoteRoot": "${workspaceFolder}" }
+      ]
+    }
+  ],
+
+  // ── Compounds ─────────────────────────────────────────────
+  //
+  // "Full web pipeline" runs baseline → hint → build in sequence on the
+  // same font. CLAUDE.md mandates this order; doing them as a compound
+  // lets you step through the whole flow without retyping the path each
+  // time. (You'll be prompted for fontPath once at the start — VSCode
+  // caches inputs across configs in a single debug session.)
+  "compounds": [
+    {
+      "name": "Web pipeline: baseline → hint → build",
+      "configurations": [
+        "baseline.py — shift glyphs",
+        "hint.py — autohint",
+        "build.py — convert + subset"
+      ],
+      "stopAll": true
+    }
+  ]
+}
