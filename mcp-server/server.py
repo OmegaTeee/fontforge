@@ -11,26 +11,34 @@ Usage:
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
 # Add scripts directory to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from mcp.server.fastmcp import FastMCP
-
-from rename import process_path as rename_process, compute_new_name, FONT_EXTENSIONS
-from build import convert_font, load_subset_codepoints, collect_fonts, FORMAT_EXTENSIONS
-from metrics import extract_metrics
-from kern import extract_kerning, apply_spacing, parse_spacing_rules
-from hint import autohint, dehint, collect_ttfs
-from variable import info as variable_info_fn, is_variable, from_statics as variable_from_statics, to_ufo
-from baseline import shift_glyphs, shift_metrics, fit_win_metrics
-
+from baseline import fit_win_metrics, shift_glyphs, shift_metrics
+from build import FORMAT_EXTENSIONS, collect_fonts, convert_font, load_subset_codepoints
 from fontTools.ttLib import TTFont
+from hint import autohint, collect_ttfs, dehint
+from kern import apply_spacing, extract_kerning, parse_spacing_rules
+from mcp.server.fastmcp import FastMCP
+from metrics import extract_metrics
+from rename import process_path as rename_process
+from variable import from_statics as variable_from_statics
+from variable import is_variable
 
-# Default fonts directory (sibling to mcp-server/)
-DEFAULT_FONTS_DIR = Path(__file__).resolve().parent.parent / "fonts"
+# Fonts directory resolution (precedence: --fonts-dir > $FONTFORGE_FONTS_DIR
+# > in-repo fonts/). The env-var layer lets the same directory be shared by
+# the MCP server, the per-script launch configs, and the user's shell, so
+# moving fonts out of the workspace doesn't require editing config files.
+_REPO_FONTS_DIR = Path(__file__).resolve().parent.parent / "fonts"
+DEFAULT_FONTS_DIR = (
+    Path(os.environ["FONTFORGE_FONTS_DIR"]).resolve()
+    if os.environ.get("FONTFORGE_FONTS_DIR")
+    else _REPO_FONTS_DIR
+)
 
 mcp = FastMCP("fontforge", instructions=(
     "Font management tools for listing, analyzing, renaming, and converting font files. "

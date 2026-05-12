@@ -13,7 +13,7 @@ Python toolkit for organizing, analyzing, and producing font files. 30+ font fam
 - `scripts/*.py` are **both** standalone CLI tools and an importable library. `mcp-server/server.py` adds `scripts/` to `sys.path` and imports by bare name (`from kern import …`). Scripts may import each other the same way. Don't change to package-relative imports.
 - Fonts are organized by family in `fonts/<Family>/`. Derivative outputs always go in **peer subdirectories** of the family: `fonts/<Family>/kerning/`, `.../shifted/`, `.../hinted/`, `.../web/`. Never overwrite vendor source files.
 - Two nested font repos (`fonts/GoogleSans-Code/`, `fonts/Schibsted-Grotesk/`) are gitignored — they have their own upstream git history. Manage separately.
-- The test fixture lives separately in `tests/fixtures/` so the test suite stays self-contained even if `fonts/` is ever moved out of the workspace.
+- **Fonts directory location** resolves in this order: `--fonts-dir` CLI flag → `$FONTFORGE_FONTS_DIR` env var → in-repo `fonts/`. Set the env var to share one location between the MCP server, VSCode launch configs, and the shell. The repo `fonts/` directory is the default for local development; the test fixture lives separately in `tests/fixtures/` so the test suite stays self-contained even if `fonts/` is moved out of the workspace.
 
 ## Pipeline order
 
