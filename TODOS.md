@@ -34,6 +34,30 @@ The MCP server is becoming the primary interface to the toolkit (fonts now live 
 
 - [ ] **💡 Wrap script imports in `mcp-server/server.py` for clearer errors** — `mcp-server/server.py:21-29` does eager bare imports of every script at module load. If one script raises during import (missing optional dep, syntax error after an edit), the server fails to start with a stack trace that doesn't name the entry-point intent. Wrapping in `try/except ImportError` with a `print("Failed to import {script}: {e}", file=sys.stderr); sys.exit(2)` would surface configuration problems faster. Cost: ~10 lines.
 
+## Pending — local config cleanup (added 2026-05-12 from /hygiene)
+
+Audit findings deferred from the 2026-05-12 hygiene pass (Group A — HIGH — was applied; these MEDIUM/LOW items remain). All touch local-only files (`.claude/settings.local.json` is gitignored), so fixes are personal-machine edits rather than version-controlled changes.
+
+### Medium
+
+- [ ] **💡 Broaden pinned Homebrew Python path** — `.claude/settings.local.json` contains `Read(//opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/bin/**)`. The `3.14.3_1` segment breaks on the next `brew upgrade python@3.14`. Fix: replace with `Read(//opt/homebrew/Cellar/python@3.14/**)`, or drop the entry entirely since `venv/bin/python` access is already covered by other patterns. Cost: 1 line.
+
+### Low
+
+- [ ] **💡 Consolidate redundant bash permissions** — `.claude/settings.local.json` `permissions.allow` has four entries that are all subsumed by `Bash(venv/bin/python *)`:
+  - `Bash(/Users/visualval/fontforge/venv/bin/python --version)` — specific single command
+  - `Bash(/Users/visualval/fontforge/venv/bin/python -m json.tool:*)` — specific subcommand
+  - `Bash(venv/bin/python mcp-server/*:*)` — narrower than `venv/bin/python *`
+  - `Bash(/Users/visualval/fontforge/venv/bin/python -c "import json; d=json.load(open('/Users/visualval/.claude.json'))...")` — 198-char one-off command
+  - Plus the absolute-vs-relative duplicate pair: `Bash(/Users/visualval/fontforge/venv/bin/python *)` and `Bash(venv/bin/python *)` — keep one.
+  Fix: collapse to just `Bash(venv/bin/python *)` + `Bash(python3 *)`. Cost: 5 entries to remove.
+
+- [ ] **💡 Remove empty `docs/.claude/` tree** — `docs/.claude/skills/{find-skills, skill-creator}` exists as empty directories (0 bytes total) — orphans from a prior skill-creation session that never produced files. Fix: `rm -rf docs/.claude/`. Cost: one command.
+
+- [ ] **💡 Drop duplicate `/private/tmp` from global additionalDirectories** — `~/.claude/settings.json` `permissions.additionalDirectories` contains both `/tmp` and `/private/tmp`. On macOS these are the same place (`/tmp` is a symlink to `/private/tmp`), so the second is purely redundant. Fix: remove `/private/tmp` entry. Affects all projects, not just this one. Cost: 1 line.
+
+- [ ] **💡 Review global `mcp__fetch__fetch` permission** — `~/.claude/settings.json` grants `mcp__fetch__fetch` but the `fetch` MCP server isn't registered anywhere visible to this project. May be valid for another project's MCP setup (global perms span projects), but worth confirming. Fix: verify the `fetch` server exists somewhere in your global MCP config; remove the perm if it's truly orphaned. Cost: 5 minutes to verify.
+
 ## Resolved
 
 - [x] ~~**⚠️ Fix stale composite bounds in `scripts/baseline.py:78–85`**~~ — fixed 2026-04-18. `fit_win_metrics` now calls `Glyph.recalcBounds(glyf, boundsDone=…)` on every glyph before reading the bbox; the shared `bounds_done` set memoizes across the composite graph. Verified on FKGrotesk-Regular, whose `nine` is a transform-flipped `six` — `recalcBounds` falls back to `getCoordinates` for non-integer-translate components, so scaled and flipped composites are handled. Also deleted the now-redundant `_recompute_bounds` helper; `shift_glyphs` uses `recalcBounds` directly.
