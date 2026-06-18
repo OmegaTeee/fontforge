@@ -19,9 +19,10 @@ import sys
 import time
 from pathlib import Path
 
-from rename import process_path as rename_process, FONT_EXTENSIONS
-from build import convert_font, load_subset_codepoints, FORMAT_EXTENSIONS, collect_fonts
-from metrics import extract_metrics, print_comparison, _fmt_size
+from build import FORMAT_EXTENSIONS, collect_fonts, convert_font, load_subset_codepoints
+from metrics import _fmt_size, extract_metrics, print_comparison
+from rename import FONT_EXTENSIONS
+from rename import process_path as rename_process
 
 
 def discover_families(fonts_dir: Path, filter_names: list[str] | None = None) -> dict[str, Path]:

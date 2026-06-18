@@ -4,9 +4,15 @@
   // venv/bin/python — never the system Python (see CLAUDE.md).
   "python.defaultInterpreterPath": "${workspaceFolder}/venv/bin/python",
   "python-envs.pythonProjects": [
-    { "path": "${workspaceFolder}" }
+    {
+      "path": "${workspaceFolder}",
+      "envManager": "ms-python.python:venv",
+      "packageManager": "ms-python.python:pip"
+    }
   ],
-
+  "python.terminal.useEnvFile": true,
+  "python.terminal.activateEnvInCurrentTerminal": true,
+  "python.terminal.activateEnvironment": true,
   // ── Static analysis (Pylance) ───────────────────────────
   "python.analysis.typeCheckingMode": "standard",
   "python.analysis.autoSearchPaths": true,
@@ -18,7 +24,6 @@
     "${workspaceFolder}/scripts",
     "${workspaceFolder}/mcp-server"
   ],
-
   // ── Testing (pytest) ────────────────────────────────────
   // pytest config lives in pyproject.toml; pythonpath = ["scripts"] there
   // mirrors the editor's extraPaths above.
@@ -26,8 +31,9 @@
   "python.testing.unittestEnabled": false,
   "python.testing.cwd": "${workspaceFolder}",
   "python.testing.pytestPath": "${workspaceFolder}/venv/bin/pytest",
-  "python.testing.pytestArgs": ["tests"],
-
+  "python.testing.pytestArgs": [
+    "tests"
+  ],
   // ── Formatting & linting (ruff) ─────────────────────────
   "[python]": {
     "editor.defaultFormatter": "charliermarsh.ruff",
@@ -40,7 +46,6 @@
   "ruff.configuration": "${workspaceFolder}/pyproject.toml",
   "ruff.importStrategy": "fromEnvironment",
   "ruff.nativeServer": "on",
-
   // ── Editor / terminal ───────────────────────────────────
   "terminal.integrated.cwd": "${workspaceFolder}",
   "terminal.integrated.enablePersistentSessions": true,
@@ -70,11 +75,7 @@
   },
   "explorer.excludeGitIgnore": false,
   "explorer.autoReveal": false,
-
   // ── Chat / agent integrations ───────────────────────────
-  "chat.mcp.serverSampling": {
-    "prompthub-bridge": { "allowedModels": ["*"] }
-  },
   "chat.tools.terminal.autoApprove": {
     "${workspaceFolder}/venv/bin/python": true,
     "${workspaceFolder}/venv/bin/pytest": true,
@@ -89,9 +90,10 @@
       "X-Client-ID": "vscode"
     }
   ],
-  "vscode-openai.apiKey": "sk-prompthub-vscode-001",
   "vscode-openai.defaultModel": "qwen3-4b-instruct-2507",
-  "markdown.styles": [".vscode/markdown.css"],
+  "markdown.styles": [
+    ".vscode/markdown.css"
+  ],
   "qwen-code.provider": "api-key",
   "qwen-code.apiKey": "sk-prompthub-qwen-code-001"
 }

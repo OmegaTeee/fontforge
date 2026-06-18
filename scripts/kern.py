@@ -19,9 +19,8 @@ import sys
 import tempfile
 from pathlib import Path
 
-from fontTools.ttLib import TTFont
 from fontTools.feaLib.builder import addOpenTypeFeatures
-
+from fontTools.ttLib import TTFont
 
 # None means "every glyph in the font"; expanded lazily in resolve_glyphs.
 CLASS_PRESETS = {

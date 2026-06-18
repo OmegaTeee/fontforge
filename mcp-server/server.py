@@ -26,6 +26,7 @@ from kern import apply_spacing, extract_kerning, parse_spacing_rules
 from mcp.server.fastmcp import FastMCP
 from metrics import extract_metrics
 from rename import process_path as rename_process
+from strikes import BitmapStrikeGenerator
 from variable import from_statics as variable_from_statics
 from variable import is_variable
 
@@ -40,11 +41,15 @@ DEFAULT_FONTS_DIR = (
     else _REPO_FONTS_DIR
 )
 
-mcp = FastMCP("fontforge", instructions=(
-    "Font management tools for listing, analyzing, renaming, and converting font files. "
-    "Use list_families for an overview, get_metrics for detailed font info, "
-    "rename_fonts to normalize filenames, and build_fonts to convert formats."
-))
+mcp = FastMCP(
+    "fontforge",
+    instructions=(
+        "Font management tools for listing, analyzing, renaming, converting, and optimizing font files. "
+        "Use list_families for an overview, get_metrics for detailed font info, "
+        "rename_fonts to normalize filenames, build_fonts to convert formats, "
+        "and build_bitmap_strikes to generate bitmap strikes for small-size rendering."
+    ),
+)
 
 
 def _family_dir(family: str) -> Path | None:
@@ -116,14 +121,16 @@ def get_metrics(family: str, font_file: str | None = None, compare: bool = False
         for m in sorted(metrics_list, key=lambda x: x.get("weight_class", 0)):
             if "error" in m:
                 continue
-            rows.append({
-                "file": m["file"],
-                "weight": m.get("weight_name", "—"),
-                "glyphs": m.get("glyph_count", 0),
-                "unicode_coverage": m.get("unicode_coverage", 0),
-                "file_size": m.get("file_size", 0),
-                "variable": m.get("variable", False),
-            })
+            rows.append(
+                {
+                    "file": m["file"],
+                    "weight": m.get("weight_name", "—"),
+                    "glyphs": m.get("glyph_count", 0),
+                    "unicode_coverage": m.get("unicode_coverage", 0),
+                    "file_size": m.get("file_size", 0),
+                    "variable": m.get("variable", False),
+                }
+            )
         return json.dumps(rows, indent=2)
 
     return json.dumps(metrics_list, indent=2)
@@ -155,11 +162,14 @@ def rename_fonts(family: str, apply: bool = False) -> str:
             entry["reason"] = r["reason"]
         output.append(entry)
 
-    return json.dumps({
-        "family": family,
-        "applied": apply,
-        "results": output,
-    }, indent=2)
+    return json.dumps(
+        {
+            "family": family,
+            "applied": apply,
+            "results": output,
+        },
+        indent=2,
+    )
 
 
 @mcp.tool()
@@ -180,7 +190,9 @@ def build_fonts(
         return json.dumps({"error": f"Family '{family}' not found"})
 
     if target_format not in FORMAT_EXTENSIONS:
-        return json.dumps({"error": f"Invalid format '{target_format}'. Use: {list(FORMAT_EXTENSIONS.keys())}"})
+        return json.dumps(
+            {"error": f"Invalid format '{target_format}'. Use: {list(FORMAT_EXTENSIONS.keys())}"}
+        )
 
     fonts = collect_fonts(family_path)
     target_ext = FORMAT_EXTENSIONS[target_format]
@@ -195,21 +207,26 @@ def build_fonts(
     for font_path in fonts:
         output = convert_font(font_path, family_path, target_format, codepoints, verbose=False)
         if output:
-            results.append({
-                "input": font_path.name,
-                "output": output.name,
-                "input_size": font_path.stat().st_size,
-                "output_size": output.stat().st_size,
-            })
+            results.append(
+                {
+                    "input": font_path.name,
+                    "output": output.name,
+                    "input_size": font_path.stat().st_size,
+                    "output_size": output.stat().st_size,
+                }
+            )
         else:
             results.append({"input": font_path.name, "error": "conversion failed"})
 
-    return json.dumps({
-        "family": family,
-        "format": target_format,
-        "subset": subset,
-        "results": results,
-    }, indent=2)
+    return json.dumps(
+        {
+            "family": family,
+            "format": target_format,
+            "subset": subset,
+            "results": results,
+        },
+        indent=2,
+    )
 
 
 @mcp.tool()
@@ -232,22 +249,26 @@ def search_fonts(query: str) -> str:
             if "error" in info:
                 continue
 
-            searchable = " ".join([
-                info.get("family", ""),
-                info.get("subfamily", ""),
-                info.get("full_name", ""),
-                info.get("designer", ""),
-                font_path.name,
-            ]).lower()
+            searchable = " ".join(
+                [
+                    info.get("family", ""),
+                    info.get("subfamily", ""),
+                    info.get("full_name", ""),
+                    info.get("designer", ""),
+                    font_path.name,
+                ]
+            ).lower()
 
             if query_lower in searchable:
-                matches.append({
-                    "family_dir": family_dir.name,
-                    "file": font_path.name,
-                    "full_name": info.get("full_name", ""),
-                    "weight": info.get("weight_name", ""),
-                    "designer": info.get("designer", ""),
-                })
+                matches.append(
+                    {
+                        "family_dir": family_dir.name,
+                        "file": font_path.name,
+                        "full_name": info.get("full_name", ""),
+                        "weight": info.get("weight_name", ""),
+                        "designer": info.get("designer", ""),
+                    }
+                )
 
     return json.dumps(matches, indent=2)
 
@@ -274,12 +295,15 @@ def dump_kerning(family: str, font_file: str) -> str:
     pairs = extract_kerning(font)
     font.close()
 
-    return json.dumps({
-        "family": family,
-        "font": font_file,
-        "pair_count": len(pairs),
-        "pairs": [{"left": l, "right": r, "value": v} for l, r, v in pairs],
-    }, indent=2)
+    return json.dumps(
+        {
+            "family": family,
+            "font": font_file,
+            "pair_count": len(pairs),
+            "pairs": [{"left": l, "right": r, "value": v} for l, r, v in pairs],
+        },
+        indent=2,
+    )
 
 
 @mcp.tool()
@@ -346,21 +370,29 @@ def hint_family(
     results = []
     for f in ttfs:
         out = f.with_stem(f.stem + suffix)
-        ok = (dehint(f, out) if dehint_mode
-              else autohint(f, out, range_min, range_max, script, strong))
-        results.append({
-            "input": f.name,
-            "output": out.name if ok else None,
-            "success": ok,
-            "input_size": f.stat().st_size,
-            "output_size": out.stat().st_size if ok and out.exists() else None,
-        })
+        ok = (
+            dehint(f, out)
+            if dehint_mode
+            else autohint(f, out, range_min, range_max, script, strong)
+        )
+        results.append(
+            {
+                "input": f.name,
+                "output": out.name if ok else None,
+                "success": ok,
+                "input_size": f.stat().st_size,
+                "output_size": out.stat().st_size if ok and out.exists() else None,
+            }
+        )
 
-    return json.dumps({
-        "family": family,
-        "mode": "dehint" if dehint_mode else "hint",
-        "results": results,
-    }, indent=2)
+    return json.dumps(
+        {
+            "family": family,
+            "mode": "dehint" if dehint_mode else "hint",
+            "results": results,
+        },
+        indent=2,
+    )
 
 
 @mcp.tool()
@@ -385,28 +417,36 @@ def variable_info(family: str, font_file: str) -> str:
 
     fvar = font["fvar"]
     name = font["name"]
-    axes = [{
-        "tag": a.axisTag,
-        "min": a.minValue,
-        "default": a.defaultValue,
-        "max": a.maxValue,
-    } for a in fvar.axes]
+    axes = [
+        {
+            "tag": a.axisTag,
+            "min": a.minValue,
+            "default": a.defaultValue,
+            "max": a.maxValue,
+        }
+        for a in fvar.axes
+    ]
 
     instances = []
     for inst in fvar.instances:
         record = name.getName(inst.subfamilyNameID, 3, 1, 0x409)
-        instances.append({
-            "name": str(record) if record else None,
-            "coordinates": dict(inst.coordinates),
-        })
+        instances.append(
+            {
+                "name": str(record) if record else None,
+                "coordinates": dict(inst.coordinates),
+            }
+        )
     font.close()
 
-    return json.dumps({
-        "variable": True,
-        "font": font_file,
-        "axes": axes,
-        "instances": instances,
-    }, indent=2)
+    return json.dumps(
+        {
+            "variable": True,
+            "font": font_file,
+            "axes": axes,
+            "instances": instances,
+        },
+        indent=2,
+    )
 
 
 @mcp.tool()
@@ -435,12 +475,15 @@ def build_variable(family: str, output_name: str | None = None, axis_tag: str = 
     except Exception as e:
         return json.dumps({"error": str(e)})
 
-    return json.dumps({
-        "family": family,
-        "masters": [f.name for f in ttfs],
-        "output": out.name,
-        "output_size": out.stat().st_size,
-    }, indent=2)
+    return json.dumps(
+        {
+            "family": family,
+            "masters": [f.name for f in ttfs],
+            "output": out.name,
+            "output_size": out.stat().st_size,
+        },
+        indent=2,
+    )
 
 
 @mcp.tool()
@@ -466,8 +509,9 @@ def shift_baseline(
     if not family_path:
         return json.dumps({"error": f"Family '{family}' not found"})
 
-    ttfs = [f for f in collect_ttfs(family_path)
-            if f.parent == family_path]  # shallow only — skip derivative subdirs
+    ttfs = [
+        f for f in collect_ttfs(family_path) if f.parent == family_path
+    ]  # shallow only — skip derivative subdirs
     if not ttfs:
         return json.dumps({"error": f"No TTF files directly under {family}"})
 
@@ -487,18 +531,87 @@ def shift_baseline(
         except Exception as e:
             results.append({"input": f.name, "error": str(e)})
 
-    return json.dumps({
-        "family": family,
-        "shift": shift,
-        "fit_win_metrics": fit_win_metrics_flag,
-        "results": results,
-    }, indent=2)
+    return json.dumps(
+        {
+            "family": family,
+            "shift": shift,
+            "fit_win_metrics": fit_win_metrics_flag,
+            "results": results,
+        },
+        indent=2,
+    )
+
+
+@mcp.tool()
+def build_bitmap_strikes(
+    family: str,
+    sizes_96dpi: list[int] | None = None,
+    sizes_120dpi: list[int] | None = None,
+    ppem: list[int] | None = None,
+) -> str:
+    """Generate bitmap strikes for a font family using FreeType.
+
+    Bitmap strikes provide pre-rasterized glyphs at specific sizes for improved
+    rendering at small point sizes.
+
+    Args:
+        family: Font family name.
+        sizes_96dpi: Point sizes for 96 DPI displays. Defaults to [15].
+        sizes_120dpi: Point sizes for 120 DPI displays. Defaults to [12].
+        ppem: Direct pixel sizes (PPEM). Defaults to [20].
+    """
+    family_path = _family_dir(family)
+    if not family_path:
+        return json.dumps({"error": f"Family '{family}' not found"})
+
+    ttfs = [f for f in collect_fonts(family_path) if f.suffix.lower() in {".ttf", ".otf"}]
+    if not ttfs:
+        return json.dumps({"error": f"No fonts found in {family}"})
+
+    generator = BitmapStrikeGenerator(verbose=False)
+
+    # Use defaults if not specified
+    if sizes_96dpi is None:
+        sizes_96dpi = generator.SIZES_96DPI
+    if sizes_120dpi is None:
+        sizes_120dpi = generator.SIZES_120DPI
+    if ppem is None:
+        ppem = generator.PIXEL_SIZES
+
+    results = []
+    for font_path in ttfs:
+        success = generator.generate_strikes(
+            font_path,
+            sizes_96dpi=sizes_96dpi,
+            sizes_120dpi=sizes_120dpi,
+            pixel_sizes=ppem,
+            output_path=None,  # Use default strikes/ subdirectory
+        )
+        results.append(
+            {
+                "input": font_path.name,
+                "success": success,
+                "sizes_96dpi": sizes_96dpi,
+                "sizes_120dpi": sizes_120dpi,
+                "ppem": ppem,
+            }
+        )
+
+    return json.dumps(
+        {
+            "family": family,
+            "results": results,
+            "note": "For actual bitmap generation, install freetype-py: pip install freetype-py",
+        },
+        indent=2,
+    )
 
 
 def main():
     parser = argparse.ArgumentParser(description="FontForge MCP Server")
-    parser.add_argument("--fonts-dir", type=Path, default=None,
-                        help="Override default fonts directory")
+    parser.add_argument(
+        "--fonts-dir", type=Path, default=None, help="Override default fonts directory"
+    )
     args = parser.parse_args()
 
     if args.fonts_dir:

@@ -17,8 +17,9 @@ import argparse
 import sys
 from pathlib import Path
 
+from fontTools.subset import Options as SubsetOptions
+from fontTools.subset import Subsetter
 from fontTools.ttLib import TTFont
-from fontTools.subset import Subsetter, Options as SubsetOptions
 
 FONT_EXTENSIONS = {".ttf", ".otf", ".woff", ".woff2"}
 FORMAT_EXTENSIONS = {"woff2": ".woff2", "woff": ".woff", "ttf": ".ttf", "otf": ".otf"}

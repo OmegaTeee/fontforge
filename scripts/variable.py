@@ -15,10 +15,10 @@ import argparse
 import sys
 from pathlib import Path
 
+from fontTools.designspaceLib import DesignSpaceDocument
 from fontTools.ttLib import TTFont
 from fontTools.varLib import build as varLib_build
 from fontTools.varLib.instancer import instantiateVariableFont
-from fontTools.designspaceLib import DesignSpaceDocument
 
 
 def is_variable(font: TTFont) -> bool:
@@ -143,9 +143,9 @@ def _pick_default(weights: list[int]) -> int:
 def to_ufo(font_path: Path, output: Path | None) -> Path:
     """Decompile a compiled TTF/OTF into a UFO source directory."""
     import shutil
+
     import extractor
     import ufoLib2
-
     from kern import strip_nonstandard_kern
 
     # extractor chokes on legacy Apple kern subtables; strip them first.

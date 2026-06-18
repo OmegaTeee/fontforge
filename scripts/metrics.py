@@ -17,7 +17,6 @@ import sys
 from pathlib import Path
 
 from fontTools.ttLib import TTFont
-from fontTools.unicode import Unicode
 
 FONT_EXTENSIONS = {".ttf", ".otf", ".woff", ".woff2", ".ttc"}
 
