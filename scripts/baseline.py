@@ -76,10 +76,14 @@ def fit_win_metrics(font: TTFont) -> tuple[int, int]:
         g.recalcBounds(glyf, boundsDone=bounds_done)
         if g.numberOfContours == 0:
             continue
-        if g.xMin < xMin: xMin = g.xMin
-        if g.yMin < yMin: yMin = g.yMin
-        if g.xMax > xMax: xMax = g.xMax
-        if g.yMax > yMax: yMax = g.yMax
+        if g.xMin < xMin:
+            xMin = g.xMin
+        if g.yMin < yMin:
+            yMin = g.yMin
+        if g.xMax > xMax:
+            xMax = g.xMax
+        if g.yMax > yMax:
+            yMax = g.yMax
     head.xMin, head.yMin, head.xMax, head.yMax = xMin, yMin, xMax, yMax
 
     os2 = font["OS/2"]
@@ -136,26 +140,40 @@ def collect_ttfs(target: Path) -> list[Path]:
     if target.is_file():
         return [target] if target.suffix.lower() in FONT_EXTENSIONS else []
     return sorted(
-        f for f in target.rglob("*")
-        if f.is_file() and f.suffix.lower() in FONT_EXTENSIONS
+        f for f in target.rglob("*") if f.is_file() and f.suffix.lower() in FONT_EXTENSIONS
     )
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Baseline shift + vertical metric tuning")
     parser.add_argument("input", type=Path, help="Font file or directory")
-    parser.add_argument("-o", "--output-dir", type=Path, default=None,
-                        help="Output directory (default: alongside input with -shifted suffix)")
-    parser.add_argument("--shift", type=int, default=0,
-                        help="Y-translation in font units. Negative = down, positive = up")
+    parser.add_argument(
+        "-o",
+        "--output-dir",
+        type=Path,
+        default=None,
+        help="Output directory (default: alongside input with -shifted suffix)",
+    )
+    parser.add_argument(
+        "--shift",
+        type=int,
+        default=0,
+        help="Y-translation in font units. Negative = down, positive = up",
+    )
     # --fit-win-metrics and --no-fit-win are mutually exclusive: one asks to
     # force the refit, the other asks to skip it. argparse raises cleanly on
     # both-supplied rather than silently letting the explicit-on win.
     win_group = parser.add_mutually_exclusive_group()
-    win_group.add_argument("--fit-win-metrics", action="store_true",
-                           help="Refit OS/2 win metrics to cover the glyph bbox (prevents Windows clipping)")
-    win_group.add_argument("--no-fit-win", action="store_true",
-                           help="Skip auto-fit of win metrics (by default fit runs whenever --shift is nonzero)")
+    win_group.add_argument(
+        "--fit-win-metrics",
+        action="store_true",
+        help="Refit OS/2 win metrics to cover the glyph bbox (prevents Windows clipping)",
+    )
+    win_group.add_argument(
+        "--no-fit-win",
+        action="store_true",
+        help="Skip auto-fit of win metrics (by default fit runs whenever --shift is nonzero)",
+    )
     parser.add_argument("-v", "--verbose", action="store_true")
 
     args = parser.parse_args()

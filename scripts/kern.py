@@ -122,7 +122,9 @@ def _read_xadvance(value_record) -> int:
     return getattr(value_record, "XAdvance", 0) or 0 if value_record else 0
 
 
-def _class_def_to_groups(class_def, coverage_glyphs: list[str] | None = None) -> dict[int, list[str]]:
+def _class_def_to_groups(
+    class_def, coverage_glyphs: list[str] | None = None
+) -> dict[int, list[str]]:
     """Invert a ClassDef table into {class_index: [glyph_names]}.
 
     Class 0 is special: any glyph in coverage (for ClassDef1) or in the font
@@ -154,8 +156,10 @@ def dump_kerning(font_path: Path, output: Path | None) -> int:
     if output:
         stream.close()
 
-    print(f"Extracted {len(pairs)} kerning pair(s)"
-          + (f" -> {output}" if output else ""), file=sys.stderr)
+    print(
+        f"Extracted {len(pairs)} kerning pair(s)" + (f" -> {output}" if output else ""),
+        file=sys.stderr,
+    )
     return len(pairs)
 
 
@@ -167,14 +171,17 @@ def apply_kerning(font_path: Path, csv_path: Path, output: Path | None) -> int:
 
     font = TTFont(font_path)
     glyph_set = set(font.getGlyphOrder())
-    valid = [(l, r, v) for l, r, v in rows if l in glyph_set and r in glyph_set]
+    valid = [
+        (left, right, value)
+        for left, right, value in rows
+        if left in glyph_set and right in glyph_set
+    ]
     skipped = len(rows) - len(valid)
 
     # Synthesize a minimal .fea and let feaLib compile it into GPOS. Going
     # through .fea (rather than writing GPOS structs directly) handles class
     # building, lookup indexing, and script/language registration for us.
-    fea_lines = ["languagesystem DFLT dflt;", "languagesystem latn dflt;",
-                 "feature kern {"]
+    fea_lines = ["languagesystem DFLT dflt;", "languagesystem latn dflt;", "feature kern {"]
     for left, right, value in valid:
         fea_lines.append(f"  pos {_fea_glyph(left)} {_fea_glyph(right)} {value};")
     fea_lines.append("} kern;")
@@ -192,9 +199,11 @@ def apply_kerning(font_path: Path, csv_path: Path, output: Path | None) -> int:
     font.save(str(out))
     font.close()
 
-    print(f"Applied {len(valid)} pair(s)"
-          + (f" ({skipped} skipped: glyph not in font)" if skipped else "")
-          + f" -> {out}")
+    print(
+        f"Applied {len(valid)} pair(s)"
+        + (f" ({skipped} skipped: glyph not in font)" if skipped else "")
+        + f" -> {out}"
+    )
     return len(valid)
 
 
@@ -275,17 +284,25 @@ def apply_spacing(font_path: Path, spec: str, output: Path | None) -> int:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Kerning and spacing utilities")
     parser.add_argument("font", type=Path, help="Font file (.ttf/.otf)")
-    parser.add_argument("-o", "--output", type=Path, default=None,
-                        help="Output path (default: derived from input, or stdout for --dump)")
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        default=None,
+        help="Output path (default: derived from input, or stdout for --dump)",
+    )
 
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--dump", action="store_true",
-                       help="Extract kerning pairs as CSV")
-    group.add_argument("--apply", type=Path, metavar="CSV",
-                       help="Merge kerning pairs from a CSV into the font")
-    group.add_argument("--spacing", metavar="SPEC",
-                       help="Adjust advance widths: 'lc:+10,A-Z:-5' "
-                            "(classes: lc/uc/digits/all, ranges, /regex/, or A,B,C)")
+    group.add_argument("--dump", action="store_true", help="Extract kerning pairs as CSV")
+    group.add_argument(
+        "--apply", type=Path, metavar="CSV", help="Merge kerning pairs from a CSV into the font"
+    )
+    group.add_argument(
+        "--spacing",
+        metavar="SPEC",
+        help="Adjust advance widths: 'lc:+10,A-Z:-5' "
+        "(classes: lc/uc/digits/all, ranges, /regex/, or A,B,C)",
+    )
 
     args = parser.parse_args()
 

@@ -8,9 +8,9 @@ The MCP server is becoming the primary interface to the toolkit (fonts now live 
 
 ### Critical
 
-- [ ] **⚠️ Path-traversal protection in `_family_dir(family)`** — `mcp-server/server.py:42` does `fonts_dir / family` with no validation. A family name like `"../../etc"` or an absolute path would escape `DEFAULT_FONTS_DIR`. Family names flow in from MCP clients, so treat them as untrusted input. Fix: resolve the candidate path and assert `resolved.is_relative_to(DEFAULT_FONTS_DIR.resolve())` before returning; reject otherwise. Cost: ~10 lines + one test.
+- [x] **⚠️ Path-traversal protection in `_family_dir(family)`** — RESOLVED 2026-06-19. Implemented path validation using `Path.relative_to()` to ensure all family paths stay within `DEFAULT_FONTS_DIR`. Rejects escape attempts like `"../../etc"` and absolute paths. All path-traversal test cases pass.
 
-- [ ] **⚠️ Validate `DEFAULT_FONTS_DIR` at startup, not at first tool call** — `mcp-server/server.py:35-40` accepts whatever path the env var or flag specifies. If it points to a file, a non-existent path, or an unreadable directory, the failure only surfaces when a client invokes `list_families` and gets a cryptic traceback. Fix: in `main()`, after precedence resolution, raise a clear error if the path doesn't exist or isn't a directory. Cost: ~5 lines.
+- [x] **⚠️ Validate `DEFAULT_FONTS_DIR` at startup, not at first tool call** — RESOLVED 2026-06-19. Added startup validation in `main()` that checks if the fonts directory exists and is a directory, exiting with clear error message if not.
 
 ### Important
 
@@ -24,9 +24,13 @@ The MCP server is becoming the primary interface to the toolkit (fonts now live 
 
 ### Tightening
 
-- [ ] **💡 Fix raw-Unicode subset arg unreachability** — `scripts/build.py:56` checks `"+" in subset_arg` before `"U+" in subset_arg.upper()` (line 66), so any `U+...` raw range is eaten by the named-range combiner. Currently documented in `tests/test_build.py::TestLoadSubsetCodepoints::test_raw_unicode_range_is_unreachable`. Fix: reorder the conditionals to check for `U+` prefix first. The test will need updating to assert the corrected behavior. Cost: 2 lines + test update.
+- [x] **💡 Resolve remaining ruff errors in `scripts/`** — RESOLVED 2026-06-19. Fixed:
+  - `mcp-server/server.py:303`: E741 ambiguous variable `l` → renamed to `left`, `right`, `value`
+  - `scripts/baseline.py:79-82`: E701 multi-statement lines → split to separate lines
+  - `scripts/kern.py:170`: E741 ambiguous variable `l` → renamed to `left`, `right`, `value`
+  All targeted ruff checks now pass.
 
-- [ ] **💡 Resolve remaining ruff errors in `scripts/`** — `ruff check .` reports 14 errors in `scripts/`: I001 import order (4 files), E701 multi-statement lines (`scripts/baseline.py:79-82`), E741 ambiguous variable `l` (kern.py, variable.py), B905 `zip()` without `strict=` (server.py:273). 11 are auto-fixable. CLAUDE.md notes the scripts were originally downloaded, not user code — but if MCP server is becoming primary, code health matters more. Cost: `ruff check --fix` for the auto-fixable; ~10 lines of hand work for the rest.
+- [ ] **💡 Fix raw-Unicode subset arg unreachability** — `scripts/build.py:56` checks `"+" in subset_arg` before `"U+" in subset_arg.upper()` (line 66), so any `U+...` raw range is eaten by the named-range combiner. Currently documented in `tests/test_build.py::TestLoadSubsetCodepoints::test_raw_unicode_range_is_unreachable`. Fix: reorder the conditionals to check for `U+` prefix first. The test will need updating to assert the corrected behavior. Cost: 2 lines + test update.
 
 - [ ] **💡 Large-file hygiene** — `fonts/Emojitwo/assets/fonts/emojione-apple.ttf` is 59 MB; GitHub warned on push that it exceeds the 50 MB recommended ceiling. Options: enable Git LFS for `*.ttf` larger than 25 MB, gitignore Emojitwo specifically, or remove the font. With fonts moving to `~/code/fonts` anyway this may resolve itself, but worth a decision before more big fonts land in `tests/fixtures/`.
 

@@ -53,15 +53,35 @@ mcp = FastMCP(
 
 
 def _family_dir(family: str) -> Path | None:
-    """Get the directory for a font family, or None if not found."""
-    fonts_dir = DEFAULT_FONTS_DIR
-    path = fonts_dir / family
-    if path.is_dir():
-        return path
-    # Case-insensitive fallback
+    """Get the directory for a font family, or None if not found.
+
+    Validates that the resolved path stays within DEFAULT_FONTS_DIR to prevent
+    path-traversal attacks. Family names from MCP clients are treated as untrusted input.
+    """
+    fonts_dir = DEFAULT_FONTS_DIR.resolve()
+    candidate = (fonts_dir / family).resolve()
+
+    # Reject if the candidate path escapes DEFAULT_FONTS_DIR
+    try:
+        candidate.relative_to(fonts_dir)
+    except ValueError:
+        return None  # Path is outside fonts_dir
+
+    if candidate.is_dir():
+        return candidate
+
+    # Case-insensitive fallback (still validates containment)
+    if not fonts_dir.is_dir():
+        return None
+
     for child in fonts_dir.iterdir():
         if child.is_dir() and child.name.lower() == family.lower():
-            return child
+            child_resolved = child.resolve()
+            try:
+                child_resolved.relative_to(fonts_dir)
+                return child_resolved
+            except ValueError:
+                return None  # Escaped somehow (shouldn't happen, but defensive)
     return None
 
 
@@ -300,7 +320,7 @@ def dump_kerning(family: str, font_file: str) -> str:
             "family": family,
             "font": font_file,
             "pair_count": len(pairs),
-            "pairs": [{"left": l, "right": r, "value": v} for l, r, v in pairs],
+            "pairs": [{"left": left, "right": right, "value": val} for left, right, val in pairs],
         },
         indent=2,
     )
@@ -617,6 +637,21 @@ def main():
     if args.fonts_dir:
         global DEFAULT_FONTS_DIR
         DEFAULT_FONTS_DIR = args.fonts_dir.resolve()
+
+    # Validate DEFAULT_FONTS_DIR at startup
+    fonts_dir = DEFAULT_FONTS_DIR.resolve()
+    if not fonts_dir.exists():
+        print(
+            f"Error: fonts directory does not exist: {fonts_dir}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if not fonts_dir.is_dir():
+        print(
+            f"Error: fonts path is not a directory: {fonts_dir}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     mcp.run()
 
