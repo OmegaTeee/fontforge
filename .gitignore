@@ -12,5 +12,5 @@ __pycache__/
 .claude/settings.local.json
 
 # Nested font repos with their own git history — manage separately
-fonts/
+fonts
 
