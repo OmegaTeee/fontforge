@@ -62,17 +62,8 @@ class TestLoadSubsetCodepoints:
         # all branches, returning None.
         assert load_subset_codepoints("klingon", None) is None
 
-    def test_raw_unicode_range_is_unreachable(self) -> None:
-        # KNOWN QUIRK: load_subset_codepoints checks `"+" in subset_arg`
-        # *before* the `"U+" in subset_arg.upper()` branch (see build.py:56
-        # vs build.py:66). Any string starting with "U+" therefore matches
-        # the named-range combiner first, splits on "+", and treats each
-        # half ("U" and "0041-0043") as an unknown range — returning None
-        # and warning to stderr. To pass raw codepoints, use the named
-        # ranges in UNICODE_RANGES or supply a subset_file. This test
-        # pins the current behavior so a refactor doesn't silently change
-        # it without an intentional decision.
-        assert load_subset_codepoints("U+0041-0043", None) is None
+    def test_raw_unicode_range_is_reachable(self) -> None:
+        assert load_subset_codepoints("U+0041-0043", None) == [0x41, 0x42, 0x43]
 
     def test_subset_file(self, tmp_path: Path) -> None:
         # Subset file branch: read characters from a file, skip whitespace.

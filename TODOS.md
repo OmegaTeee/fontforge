@@ -14,13 +14,13 @@ The MCP server is becoming the primary interface to the toolkit (fonts now live 
 
 ### Important
 
-- [ ] **💡 Add direct tests for MCP server tools** — `tests/` covers `scripts/` thoroughly (94 tests) but the MCP bridging layer (`mcp-server/server.py`) has zero direct test coverage. The tool functions can be invoked directly without spinning up stdio. Suggested first batch: `list_families`, `get_metrics`, `_family_dir` (path-traversal cases). Cost: ~1 hour for a useful initial suite.
+- [x] **💡 Add direct tests for MCP server tools** — RESOLVED 2026-06-22. Added `tests/test_mcp_server.py` with direct coverage for `list_families`, `get_metrics`, `_family_dir` path-traversal rejection, and MCP log creation against a fixture-backed temporary fonts directory.
 
-- [ ] **💡 Structured request/error logging** — `mcp-server/server.py` has no request logging, so when a client (Claude Code, etc.) hits an unexpected response, there's no trail to inspect. Add a minimal logging setup that records: tool name, arguments (truncated), elapsed ms, and any exception. Should write to a file under `~/.cache/fontforge/` or wherever `XDG_CACHE_HOME` points. Makes the "MCP Server attach" launch config much more useful in practice. Cost: ~30 lines.
+- [x] **💡 Structured request/error logging** — RESOLVED 2026-06-22. Added rotating MCP tool-call logging to `~/.cache/fontforge/mcp.log` or `$XDG_CACHE_HOME/fontforge/mcp.log`, recording tool name, truncated arguments, elapsed time, and exception details.
 
-- [ ] **💡 GitHub Actions CI: pytest + ruff on push** — 94 tests are easy to forget to run before pushing. Add `.github/workflows/ci.yml` that sets up Python 3.14 + venv + runs `pytest` and `ruff check`. Free for private repos at our usage volume. Cost: one workflow file (~30 lines).
+- [x] **💡 GitHub Actions CI: pytest + ruff on push** — RESOLVED 2026-06-22. Added `.github/workflows/ci.yml` for push and pull request checks on Ubuntu with Python 3.14, `ttfautohint`, `ruff check .`, and unit pytest.
 
-- [ ] **💡 Auto-debugpy launch config for MCP server attach** — `.vscode/launch.json:240` documents a one-line command to wrap the server in `debugpy --listen 5678 --wait-for-client`, but it's manual friction. Add a `"preLaunchTask"` in `.vscode/tasks.json` that runs that command, and the "MCP Server — attach" config becomes one-click. Cost: ~15 lines across two files.
+- [x] **💡 Auto-debugpy launch config for MCP server attach** — RESOLVED 2026-06-22. Added `.vscode/tasks.json` with an `MCP Server — debugpy wait` task and wired it into the existing attach launch config.
 
 ### Tightening
 
@@ -30,13 +30,13 @@ The MCP server is becoming the primary interface to the toolkit (fonts now live 
   - `scripts/kern.py:170`: E741 ambiguous variable `l` → renamed to `left`, `right`, `value`
   All targeted ruff checks now pass.
 
-- [ ] **💡 Fix raw-Unicode subset arg unreachability** — `scripts/build.py:56` checks `"+" in subset_arg` before `"U+" in subset_arg.upper()` (line 66), so any `U+...` raw range is eaten by the named-range combiner. Currently documented in `tests/test_build.py::TestLoadSubsetCodepoints::test_raw_unicode_range_is_unreachable`. Fix: reorder the conditionals to check for `U+` prefix first. The test will need updating to assert the corrected behavior. Cost: 2 lines + test update.
+- [x] **💡 Fix raw-Unicode subset arg unreachability** — RESOLVED 2026-06-22. `load_subset_codepoints()` now checks raw `U+...` ranges before named-range combinations, and `tests/test_build.py::TestLoadSubsetCodepoints::test_raw_unicode_range_is_reachable` asserts the corrected behavior.
 
-- [ ] **💡 Large-file hygiene** — `fonts/Emojitwo/assets/fonts/emojione-apple.ttf` is 59 MB; GitHub warned on push that it exceeds the 50 MB recommended ceiling. Options: enable Git LFS for `*.ttf` larger than 25 MB, gitignore Emojitwo specifically, or remove the font. With fonts moving to `~/code/fonts` anyway this may resolve itself, but worth a decision before more big fonts land in `tests/fixtures/`.
+- [x] **💡 Large-file hygiene** — RESOLVED 2026-06-22. The large Emojitwo font is no longer present in the repository, and the local `fonts` symlink has been removed from Git tracking while `fonts` remains ignored for local development.
 
-- [ ] **💡 Parametrize the composite-shift regression test** — `tests/test_integration.py:101` tests only `Aacute`. The fixture has 174 composite glyphs; parametrizing across a handful (e.g. `["Aacute", "Egrave", "Ccedilla", "Ntilde"]`) would catch shift-bug variants that only manifest on specific transform combinations. Cost: ~5 lines.
+- [x] **💡 Parametrize the composite-shift regression test** — RESOLVED 2026-06-22. The regression now covers `["Aacute", "Egrave", "Cacute", "Ntilde"]`; `Cacute` is used because `Ccedilla` is a simple outline in the Atkinson fixture.
 
-- [ ] **💡 Wrap script imports in `mcp-server/server.py` for clearer errors** — `mcp-server/server.py:21-29` does eager bare imports of every script at module load. If one script raises during import (missing optional dep, syntax error after an edit), the server fails to start with a stack trace that doesn't name the entry-point intent. Wrapping in `try/except ImportError` with a `print("Failed to import {script}: {e}", file=sys.stderr); sys.exit(2)` would surface configuration problems faster. Cost: ~10 lines.
+- [x] **💡 Wrap script imports in `mcp-server/server.py` for clearer errors** — RESOLVED 2026-06-22. Script imports now fail fast with `Failed to import <script>: <error>` and exit code 2.
 
 ## Pending — local config cleanup (added 2026-05-12 from /hygiene)
 

@@ -53,6 +53,10 @@ def load_subset_codepoints(subset_arg: str | None, subset_file: Path | None) -> 
         # Check if it's a named range
         if subset_arg.lower() in UNICODE_RANGES:
             return parse_unicode_ranges(UNICODE_RANGES[subset_arg.lower()])
+        # Raw Unicode range string. Check before "+" because "U+0041"
+        # contains plus signs but is not a named-range combination.
+        if "U+" in subset_arg.upper():
+            return parse_unicode_ranges(subset_arg)
         # Multiple named ranges separated by +
         if "+" in subset_arg:
             codepoints = set()
@@ -63,9 +67,6 @@ def load_subset_codepoints(subset_arg: str | None, subset_file: Path | None) -> 
                 else:
                     print(f"Warning: unknown range '{name}', skipping", file=sys.stderr)
             return sorted(codepoints) if codepoints else None
-        # Raw Unicode range string
-        if "U+" in subset_arg.upper():
-            return parse_unicode_ranges(subset_arg)
 
     if subset_file:
         text = subset_file.read_text(encoding="utf-8")
@@ -139,9 +140,11 @@ def convert_font(
     ratio = (1 - output_size / input_size) * 100 if input_size > 0 else 0
 
     if verbose:
-        print(f"  {input_path.name} ({_fmt_size(input_size)}) -> "
-              f"{output_path.name} ({_fmt_size(output_size)}) "
-              f"[{ratio:+.1f}%]")
+        print(
+            f"  {input_path.name} ({_fmt_size(input_size)}) -> "
+            f"{output_path.name} ({_fmt_size(output_size)}) "
+            f"[{ratio:+.1f}%]"
+        )
     else:
         print(f"  {input_path.name} -> {output_path.name} [{ratio:+.1f}%]")
 
@@ -162,26 +165,38 @@ def collect_fonts(target: Path) -> list[Path]:
     if target.is_file():
         return [target] if target.suffix.lower() in FONT_EXTENSIONS else []
     return sorted(
-        f for f in target.rglob("*")
-        if f.is_file() and f.suffix.lower() in FONT_EXTENSIONS
+        f for f in target.rglob("*") if f.is_file() and f.suffix.lower() in FONT_EXTENSIONS
     )
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build/convert font files")
     parser.add_argument("input", type=Path, help="Font file or directory")
-    parser.add_argument("--format", "-f", default="woff2",
-                        choices=list(FORMAT_EXTENSIONS.keys()),
-                        help="Target format (default: woff2)")
-    parser.add_argument("--output-dir", "-o", type=Path, default=None,
-                        help="Output directory (default: same as input)")
-    parser.add_argument("--subset", "-s", default=None,
-                        help="Subset: named range (latin, cyrillic, etc.), "
-                             "combined (latin+cyrillic), or U+XXXX ranges")
-    parser.add_argument("--subset-file", type=Path, default=None,
-                        help="File containing characters to keep")
-    parser.add_argument("--verbose", "-v", action="store_true",
-                        help="Show file sizes")
+    parser.add_argument(
+        "--format",
+        "-f",
+        default="woff2",
+        choices=list(FORMAT_EXTENSIONS.keys()),
+        help="Target format (default: woff2)",
+    )
+    parser.add_argument(
+        "--output-dir",
+        "-o",
+        type=Path,
+        default=None,
+        help="Output directory (default: same as input)",
+    )
+    parser.add_argument(
+        "--subset",
+        "-s",
+        default=None,
+        help="Subset: named range (latin, cyrillic, etc.), "
+        "combined (latin+cyrillic), or U+XXXX ranges",
+    )
+    parser.add_argument(
+        "--subset-file", type=Path, default=None, help="File containing characters to keep"
+    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Show file sizes")
     args = parser.parse_args()
 
     if not args.input.exists():
@@ -205,8 +220,10 @@ def main() -> None:
     output_dir = args.output_dir or (args.input if args.input.is_dir() else args.input.parent)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"Converting {len(fonts)} font(s) to {args.format}"
-          + (f" (subset: {args.subset or 'custom'})" if codepoints else ""))
+    print(
+        f"Converting {len(fonts)} font(s) to {args.format}"
+        + (f" (subset: {args.subset or 'custom'})" if codepoints else "")
+    )
 
     success = 0
     for font_path in fonts:

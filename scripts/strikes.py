@@ -15,18 +15,14 @@ Usage:
 """
 
 import argparse
+import importlib.util
 import sys
 from pathlib import Path
 
 from fontTools.ttLib import TTFont
 
 # Try to import freetype2, fallback if not available
-try:
-    import freetype
-
-    FREETYPE_AVAILABLE = True
-except ImportError:
-    FREETYPE_AVAILABLE = False
+FREETYPE_AVAILABLE = importlib.util.find_spec("freetype") is not None
 
 FONT_EXTENSIONS = {".ttf", ".otf"}
 

@@ -1,0 +1,33 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "MCP Server — debugpy wait",
+      "type": "shell",
+      "command": "${workspaceFolder}/venv/bin/python",
+      "args": [
+        "-m",
+        "debugpy",
+        "--listen",
+        "5678",
+        "--wait-for-client",
+        "${workspaceFolder}/mcp-server/server.py",
+        "--fonts-dir",
+        "${input:fontsDir}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "fontsDir",
+      "type": "promptString",
+      "description": "Fonts root directory",
+      "default": "${workspaceFolder}/fonts"
+    }
+  ]
+}
