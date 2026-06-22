@@ -65,6 +65,34 @@ def test_get_metrics_returns_expected_fields(
     assert result["file_size"] > 0
 
 
+def test_font_file_tools_reject_path_traversal(
+    mcp_server_module: ModuleType,
+    fixture_family_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(mcp_server_module, "DEFAULT_FONTS_DIR", fixture_family_dir)
+
+    for tool in (
+        mcp_server_module.get_metrics,
+        mcp_server_module.dump_kerning,
+        mcp_server_module.variable_info,
+    ):
+        result = json.loads(tool("Atkinson", "../outside.ttf"))
+        assert "path traversal" in result["error"]
+
+
+def test_build_variable_rejects_output_name_path_traversal(
+    mcp_server_module: ModuleType,
+    fixture_family_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(mcp_server_module, "DEFAULT_FONTS_DIR", fixture_family_dir)
+
+    result = json.loads(mcp_server_module.build_variable("Atkinson", "../outside.ttf"))
+
+    assert "path traversal" in result["error"]
+
+
 def test_family_dir_rejects_path_traversal(
     mcp_server_module: ModuleType,
     fixture_family_dir: Path,

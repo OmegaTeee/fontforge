@@ -21,7 +21,7 @@ from pathlib import Path
 
 from fontTools.ttLib import TTFont
 
-# Try to import freetype2, fallback if not available
+# Check for optional freetype2 support without importing it at module load.
 FREETYPE_AVAILABLE = importlib.util.find_spec("freetype") is not None
 
 FONT_EXTENSIONS = {".ttf", ".otf"}

@@ -117,7 +117,7 @@ def _configure_logging() -> logging.Logger:
         logger.removeHandler(handler)
         handler.close()
 
-    handler = RotatingFileHandler(log_path, maxBytes=1_000_000, backupCount=3)
+    handler = RotatingFileHandler(log_path, maxBytes=1_000_000, backupCount=3, encoding="utf-8")
     handler._fontforge_log_path = log_path
     handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
     logger.addHandler(handler)
@@ -199,6 +199,26 @@ def _family_dir(family: str) -> Path | None:
     return None
 
 
+def _family_child_path(family_path: Path, filename: str) -> Path | None:
+    """Resolve a client-provided filename under a family directory.
+
+    MCP filename arguments are intended to name direct children of the family
+    directory. Reject path separators, absolute paths, and traversal markers
+    before touching the filesystem.
+    """
+    requested = Path(filename)
+    if requested.is_absolute() or len(requested.parts) != 1 or requested.name in {"", ".", ".."}:
+        return None
+
+    family_root = family_path.resolve()
+    candidate = (family_root / requested.name).resolve()
+    try:
+        candidate.relative_to(family_root)
+    except ValueError:
+        return None
+    return candidate
+
+
 @mcp.tool()
 @log_tool_call
 def list_families(detail: bool = False) -> str:
@@ -244,7 +264,9 @@ def get_metrics(family: str, font_file: str | None = None, compare: bool = False
         return json.dumps({"error": f"Family '{family}' not found"})
 
     if font_file:
-        target = family_path / font_file
+        target = _family_child_path(family_path, font_file)
+        if target is None:
+            return json.dumps({"error": "Invalid font_file: path traversal is not allowed"})
         if not target.exists():
             return json.dumps({"error": f"File '{font_file}' not found in {family}"})
         return json.dumps(extract_metrics(target), indent=2)
@@ -427,7 +449,9 @@ def dump_kerning(family: str, font_file: str) -> str:
     family_path = _family_dir(family)
     if not family_path:
         return json.dumps({"error": f"Family '{family}' not found"})
-    target = family_path / font_file
+    target = _family_child_path(family_path, font_file)
+    if target is None:
+        return json.dumps({"error": "Invalid font_file: path traversal is not allowed"})
     if not target.exists():
         return json.dumps({"error": f"File '{font_file}' not found in {family}"})
 
@@ -549,7 +573,9 @@ def variable_info(family: str, font_file: str) -> str:
     family_path = _family_dir(family)
     if not family_path:
         return json.dumps({"error": f"Family '{family}' not found"})
-    target = family_path / font_file
+    target = _family_child_path(family_path, font_file)
+    if target is None:
+        return json.dumps({"error": "Invalid font_file: path traversal is not allowed"})
     if not target.exists():
         return json.dumps({"error": f"File '{font_file}' not found in {family}"})
 
@@ -609,11 +635,17 @@ def build_variable(family: str, output_name: str | None = None, axis_tag: str = 
     if not family_path:
         return json.dumps({"error": f"Family '{family}' not found"})
 
+    if output_name:
+        out = _family_child_path(family_path, output_name)
+        if out is None:
+            return json.dumps({"error": "Invalid output_name: path traversal is not allowed"})
+    else:
+        out = family_path / f"{family}-VF.ttf"
+
     ttfs = [f for f in collect_ttfs(family_path) if "-VF" not in f.stem]
     if len(ttfs) < 2:
         return json.dumps({"error": f"Need >=2 static TTFs in {family}, found {len(ttfs)}"})
 
-    out = family_path / (output_name or f"{family}-VF.ttf")
     try:
         variable_from_statics(ttfs, out, axis_tag)
     except Exception as e:
