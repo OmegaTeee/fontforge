@@ -44,11 +44,11 @@ Audit findings deferred from the 2026-05-12 hygiene pass (Group A — HIGH — w
 
 ### Medium
 
-- [ ] **💡 Broaden pinned Homebrew Python path** — `.claude/settings.local.json` contains `Read(//opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/bin/**)`. The `3.14.3_1` segment breaks on the next `brew upgrade python@3.14`. Fix: replace with `Read(//opt/homebrew/Cellar/python@3.14/**)`, or drop the entry entirely since `venv/bin/python` access is already covered by other patterns. Cost: 1 line.
+- [x] **💡 Broaden pinned Homebrew Python path** — RESOLVED 2026-06-22. The stale version-pinned global Claude permission was removed; `Read(//opt/homebrew/Cellar/python@3.14/**)` remains.
 
 ### Low
 
-- [ ] **💡 Consolidate redundant bash permissions** — `.claude/settings.local.json` `permissions.allow` has four entries that are all subsumed by `Bash(venv/bin/python *)`:
+- [x] **💡 Consolidate redundant bash permissions** — RESOLVED 2026-06-22. The previously listed project-local `.claude/settings.local.json` entries are not present in the current repo or global local settings:
   - `Bash(/Users/visualval/fontforge/venv/bin/python --version)` — specific single command
   - `Bash(/Users/visualval/fontforge/venv/bin/python -m json.tool:*)` — specific subcommand
   - `Bash(venv/bin/python mcp-server/*:*)` — narrower than `venv/bin/python *`
@@ -56,11 +56,11 @@ Audit findings deferred from the 2026-05-12 hygiene pass (Group A — HIGH — w
   - Plus the absolute-vs-relative duplicate pair: `Bash(/Users/visualval/fontforge/venv/bin/python *)` and `Bash(venv/bin/python *)` — keep one.
   Fix: collapse to just `Bash(venv/bin/python *)` + `Bash(python3 *)`. Cost: 5 entries to remove.
 
-- [ ] **💡 Remove empty `docs/.claude/` tree** — `docs/.claude/skills/{find-skills, skill-creator}` exists as empty directories (0 bytes total) — orphans from a prior skill-creation session that never produced files. Fix: `rm -rf docs/.claude/`. Cost: one command.
+- [x] **💡 Remove empty `docs/.claude/` tree** — RESOLVED 2026-06-22. `docs/.claude/` is absent.
 
-- [ ] **💡 Drop duplicate `/private/tmp` from global additionalDirectories** — `~/.claude/settings.json` `permissions.additionalDirectories` contains both `/tmp` and `/private/tmp`. On macOS these are the same place (`/tmp` is a symlink to `/private/tmp`), so the second is purely redundant. Fix: remove `/private/tmp` entry. Affects all projects, not just this one. Cost: 1 line.
+- [x] **💡 Drop duplicate `/private/tmp` from global additionalDirectories** — RESOLVED 2026-06-22. Removed `/private/tmp` from `~/.claude/settings.json`; `/tmp` remains.
 
-- [ ] **💡 Review global `mcp__fetch__fetch` permission** — `~/.claude/settings.json` grants `mcp__fetch__fetch` but the `fetch` MCP server isn't registered anywhere visible to this project. May be valid for another project's MCP setup (global perms span projects), but worth confirming. Fix: verify the `fetch` server exists somewhere in your global MCP config; remove the perm if it's truly orphaned. Cost: 5 minutes to verify.
+- [x] **💡 Review global `mcp__fetch__fetch` permission** — RESOLVED 2026-06-22. The permission is not present in current `~/.claude/settings.json`, so there is nothing to remove.
 
 ## Resolved
 
