@@ -645,7 +645,6 @@ def build_variable(family: str, output_name: str | None = None, axis_tag: str = 
     ttfs = [f for f in collect_ttfs(family_path) if "-VF" not in f.stem]
     if len(ttfs) < 2:
         return json.dumps({"error": f"Need >=2 static TTFs in {family}, found {len(ttfs)}"})
-
     try:
         variable_from_statics(ttfs, out, axis_tag)
     except Exception as e:

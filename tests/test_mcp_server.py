@@ -121,3 +121,7 @@ def test_tool_call_writes_structured_log(
     log_path = tmp_path / "cache" / "fontforge" / "mcp.log"
     assert log_path.exists()
     assert "list_families" in log_path.read_text(encoding="utf-8")
+
+    logger = mcp_server_module._configure_logging()
+    assert logger.handlers
+    assert logger.handlers[0].encoding == "utf-8"
