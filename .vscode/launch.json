@@ -260,6 +260,7 @@
       "name": "MCP Server — attach (port 5678)",
       "type": "debugpy",
       "request": "attach",
+      "preLaunchTask": "MCP Server — debugpy wait",
       "connect": { "host": "localhost", "port": 5678 },
       "justMyCode": false,
       "pathMappings": [

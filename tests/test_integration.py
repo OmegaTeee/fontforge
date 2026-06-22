@@ -98,7 +98,10 @@ class TestBaseline:
         finally:
             font.close()
 
-    def test_shift_does_not_double_shift_composites(self, fixture_font_path: Path) -> None:
+    @pytest.mark.parametrize("glyph_name", ["Aacute", "Egrave", "Cacute", "Ntilde"])
+    def test_shift_does_not_double_shift_composites(
+        self, fixture_font_path: Path, glyph_name: str
+    ) -> None:
         # The regression test. Find a composite glyph (Aacute is reliable:
         # composite of A + acute in any Latin font with diacritics), grab
         # its component y-offsets, shift, and verify the offsets are
@@ -107,14 +110,14 @@ class TestBaseline:
         font = TTFont(fixture_font_path)
         try:
             glyf = font["glyf"]
-            assert glyf["Aacute"].numberOfContours == -1, (
-                "expected 'Aacute' to be a composite glyph"
+            assert glyf[glyph_name].numberOfContours == -1, (
+                f"expected '{glyph_name}' to be a composite glyph"
             )
-            before_offsets = [(c.glyphName, c.x, c.y) for c in glyf["Aacute"].components]
+            before_offsets = [(c.glyphName, c.x, c.y) for c in glyf[glyph_name].components]
 
             shift_glyphs(font, -40)
 
-            after_offsets = [(c.glyphName, c.x, c.y) for c in glyf["Aacute"].components]
+            after_offsets = [(c.glyphName, c.x, c.y) for c in glyf[glyph_name].components]
             assert before_offsets == after_offsets, (
                 "composite component offsets must not be modified by shift_glyphs "
                 "— they inherit the shift through their base glyphs already"

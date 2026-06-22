@@ -6,27 +6,6 @@
       "args": [
         "/Users/visualval/fontforge/mcp-server/server.py"
       ]
-    },
-    "prompthub-bridge": {
-      "type": "stdio",
-      "command": "node",
-      "args": [
-        "/Users/visualval/prompthub/mcps/prompthub-bridge.js"
-      ],
-      "cwd": "/Users/visualval/.local/share/prompthub/mcps/",
-      "env": {
-        "AUTHORIZATION": "Bearer sk-prompthub-claude-code-001",
-        "PROMPTHUB_URL": "http://127.0.0.1:9090",
-        "CLIENT_NAME": "claude-code",
-        "API_KEY": "sk-prompthub-claude-code-001",
-        "CONTENT_TYPE": "application/json"
-      },
-      "headers": {
-        "Authorization": "Bearer sk-prompthub-claude-code-001",
-        "Content-Type": "application/json",
-        "X-Client-Name": "claude-code",
-        "X-API-KEY": "sk-prompthub-claude-code-001"
-      }
     }
   }
 }

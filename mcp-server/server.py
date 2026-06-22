@@ -11,24 +11,68 @@ Usage:
 
 import argparse
 import json
+import logging
 import os
 import sys
+import time
+from functools import wraps
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
+
+from fontTools.ttLib import TTFont
+from mcp.server.fastmcp import FastMCP
 
 # Add scripts directory to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from baseline import fit_win_metrics, shift_glyphs, shift_metrics
-from build import FORMAT_EXTENSIONS, collect_fonts, convert_font, load_subset_codepoints
-from fontTools.ttLib import TTFont
-from hint import autohint, collect_ttfs, dehint
-from kern import apply_spacing, extract_kerning, parse_spacing_rules
-from mcp.server.fastmcp import FastMCP
-from metrics import extract_metrics
-from rename import process_path as rename_process
-from strikes import BitmapStrikeGenerator
-from variable import from_statics as variable_from_statics
-from variable import is_variable
+try:
+    from baseline import fit_win_metrics, shift_glyphs, shift_metrics
+except Exception as e:
+    print(f"Failed to import baseline: {e}", file=sys.stderr)
+    sys.exit(2)
+
+try:
+    from build import FORMAT_EXTENSIONS, collect_fonts, convert_font, load_subset_codepoints
+except Exception as e:
+    print(f"Failed to import build: {e}", file=sys.stderr)
+    sys.exit(2)
+
+try:
+    from hint import autohint, collect_ttfs, dehint
+except Exception as e:
+    print(f"Failed to import hint: {e}", file=sys.stderr)
+    sys.exit(2)
+
+try:
+    from kern import apply_spacing, extract_kerning, parse_spacing_rules
+except Exception as e:
+    print(f"Failed to import kern: {e}", file=sys.stderr)
+    sys.exit(2)
+
+try:
+    from metrics import extract_metrics
+except Exception as e:
+    print(f"Failed to import metrics: {e}", file=sys.stderr)
+    sys.exit(2)
+
+try:
+    from rename import process_path as rename_process
+except Exception as e:
+    print(f"Failed to import rename: {e}", file=sys.stderr)
+    sys.exit(2)
+
+try:
+    from strikes import BitmapStrikeGenerator
+except Exception as e:
+    print(f"Failed to import strikes: {e}", file=sys.stderr)
+    sys.exit(2)
+
+try:
+    from variable import from_statics as variable_from_statics
+    from variable import is_variable
+except Exception as e:
+    print(f"Failed to import variable: {e}", file=sys.stderr)
+    sys.exit(2)
 
 # Fonts directory resolution (precedence: --fonts-dir > $FONTFORGE_FONTS_DIR
 # > in-repo fonts/). The env-var layer lets the same directory be shared by
@@ -50,6 +94,76 @@ mcp = FastMCP(
         "and build_bitmap_strikes to generate bitmap strikes for small-size rendering."
     ),
 )
+
+
+def _mcp_log_path() -> Path:
+    """Return the MCP log path, respecting XDG_CACHE_HOME."""
+    cache_root = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+    return cache_root / "fontforge" / "mcp.log"
+
+
+def _configure_logging() -> logging.Logger:
+    """Configure rotating file logging for MCP tool calls."""
+    logger = logging.getLogger("fontforge.mcp")
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+
+    log_path = _mcp_log_path()
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+
+    for handler in list(logger.handlers):
+        if getattr(handler, "_fontforge_log_path", None) == log_path:
+            return logger
+        logger.removeHandler(handler)
+        handler.close()
+
+    handler = RotatingFileHandler(log_path, maxBytes=1_000_000, backupCount=3, encoding="utf-8")
+    handler._fontforge_log_path = log_path
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    logger.addHandler(handler)
+    return logger
+
+
+def _format_tool_args(args: tuple, kwargs: dict) -> str:
+    """Format tool call arguments, capped so logs stay readable."""
+    text = repr({"args": args, "kwargs": kwargs})
+    if len(text) > 200:
+        return text[:197] + "..."
+    return text
+
+
+def log_tool_call(func):
+    """Log MCP tool calls without changing signatures or return values."""
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        logger = _configure_logging()
+        tool_args = _format_tool_args(args, kwargs)
+        start = time.perf_counter()
+        try:
+            result = func(*args, **kwargs)
+        except Exception as e:
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            logger.exception(
+                "tool=%s args=%s elapsed_ms=%.2f exception=%s: %s",
+                func.__name__,
+                tool_args,
+                elapsed_ms,
+                type(e).__name__,
+                e,
+            )
+            raise
+
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        logger.info(
+            "tool=%s args=%s elapsed_ms=%.2f",
+            func.__name__,
+            tool_args,
+            elapsed_ms,
+        )
+        return result
+
+    return wrapper
 
 
 def _family_dir(family: str) -> Path | None:
@@ -85,7 +199,28 @@ def _family_dir(family: str) -> Path | None:
     return None
 
 
+def _family_child_path(family_path: Path, filename: str) -> Path | None:
+    """Resolve a client-provided filename under a family directory.
+
+    MCP filename arguments are intended to name direct children of the family
+    directory. Reject path separators, absolute paths, and traversal markers
+    before touching the filesystem.
+    """
+    requested = Path(filename)
+    if requested.is_absolute() or len(requested.parts) != 1 or requested.name in {"", ".", ".."}:
+        return None
+
+    family_root = family_path.resolve()
+    candidate = (family_root / requested.name).resolve()
+    try:
+        candidate.relative_to(family_root)
+    except ValueError:
+        return None
+    return candidate
+
+
 @mcp.tool()
+@log_tool_call
 def list_families(detail: bool = False) -> str:
     """List all font families in the fonts directory.
 
@@ -115,6 +250,7 @@ def list_families(detail: bool = False) -> str:
 
 
 @mcp.tool()
+@log_tool_call
 def get_metrics(family: str, font_file: str | None = None, compare: bool = False) -> str:
     """Get detailed metrics for a font family or specific font file.
 
@@ -128,7 +264,9 @@ def get_metrics(family: str, font_file: str | None = None, compare: bool = False
         return json.dumps({"error": f"Family '{family}' not found"})
 
     if font_file:
-        target = family_path / font_file
+        target = _family_child_path(family_path, font_file)
+        if target is None:
+            return json.dumps({"error": "Invalid font_file: path traversal is not allowed"})
         if not target.exists():
             return json.dumps({"error": f"File '{font_file}' not found in {family}"})
         return json.dumps(extract_metrics(target), indent=2)
@@ -157,6 +295,7 @@ def get_metrics(family: str, font_file: str | None = None, compare: bool = False
 
 
 @mcp.tool()
+@log_tool_call
 def rename_fonts(family: str, apply: bool = False) -> str:
     """Preview or apply filename normalization for a font family.
 
@@ -193,6 +332,7 @@ def rename_fonts(family: str, apply: bool = False) -> str:
 
 
 @mcp.tool()
+@log_tool_call
 def build_fonts(
     family: str,
     target_format: str = "woff2",
@@ -250,6 +390,7 @@ def build_fonts(
 
 
 @mcp.tool()
+@log_tool_call
 def search_fonts(query: str) -> str:
     """Search for fonts by name, weight, or designer.
 
@@ -294,6 +435,7 @@ def search_fonts(query: str) -> str:
 
 
 @mcp.tool()
+@log_tool_call
 def dump_kerning(family: str, font_file: str) -> str:
     """Extract kerning pairs from a specific font as CSV rows.
 
@@ -307,7 +449,9 @@ def dump_kerning(family: str, font_file: str) -> str:
     family_path = _family_dir(family)
     if not family_path:
         return json.dumps({"error": f"Family '{family}' not found"})
-    target = family_path / font_file
+    target = _family_child_path(family_path, font_file)
+    if target is None:
+        return json.dumps({"error": "Invalid font_file: path traversal is not allowed"})
     if not target.exists():
         return json.dumps({"error": f"File '{font_file}' not found in {family}"})
 
@@ -327,6 +471,7 @@ def dump_kerning(family: str, font_file: str) -> str:
 
 
 @mcp.tool()
+@log_tool_call
 def adjust_spacing(family: str, spec: str, suffix: str = "-spaced") -> str:
     """Adjust advance widths across a font family by glyph class.
 
@@ -356,6 +501,7 @@ def adjust_spacing(family: str, spec: str, suffix: str = "-spaced") -> str:
 
 
 @mcp.tool()
+@log_tool_call
 def hint_family(
     family: str,
     range_min: int = 8,
@@ -416,6 +562,7 @@ def hint_family(
 
 
 @mcp.tool()
+@log_tool_call
 def variable_info(family: str, font_file: str) -> str:
     """Report axes and named instances of a variable font.
 
@@ -426,7 +573,9 @@ def variable_info(family: str, font_file: str) -> str:
     family_path = _family_dir(family)
     if not family_path:
         return json.dumps({"error": f"Family '{family}' not found"})
-    target = family_path / font_file
+    target = _family_child_path(family_path, font_file)
+    if target is None:
+        return json.dumps({"error": "Invalid font_file: path traversal is not allowed"})
     if not target.exists():
         return json.dumps({"error": f"File '{font_file}' not found in {family}"})
 
@@ -470,6 +619,7 @@ def variable_info(family: str, font_file: str) -> str:
 
 
 @mcp.tool()
+@log_tool_call
 def build_variable(family: str, output_name: str | None = None, axis_tag: str = "wght") -> str:
     """Build a variable font by interpolating the static masters in a family.
 
@@ -485,11 +635,16 @@ def build_variable(family: str, output_name: str | None = None, axis_tag: str = 
     if not family_path:
         return json.dumps({"error": f"Family '{family}' not found"})
 
+    if output_name:
+        out = _family_child_path(family_path, output_name)
+        if out is None:
+            return json.dumps({"error": "Invalid output_name: path traversal is not allowed"})
+    else:
+        out = family_path / f"{family}-VF.ttf"
+
     ttfs = [f for f in collect_ttfs(family_path) if "-VF" not in f.stem]
     if len(ttfs) < 2:
         return json.dumps({"error": f"Need >=2 static TTFs in {family}, found {len(ttfs)}"})
-
-    out = family_path / (output_name or f"{family}-VF.ttf")
     try:
         variable_from_statics(ttfs, out, axis_tag)
     except Exception as e:
@@ -507,6 +662,7 @@ def build_variable(family: str, output_name: str | None = None, axis_tag: str = 
 
 
 @mcp.tool()
+@log_tool_call
 def shift_baseline(
     family: str,
     shift: int,
@@ -563,6 +719,7 @@ def shift_baseline(
 
 
 @mcp.tool()
+@log_tool_call
 def build_bitmap_strikes(
     family: str,
     sizes_96dpi: list[int] | None = None,
@@ -653,6 +810,7 @@ def main():
         )
         sys.exit(1)
 
+    _configure_logging()
     mcp.run()
 
 

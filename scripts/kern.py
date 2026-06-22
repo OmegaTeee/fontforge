@@ -94,7 +94,7 @@ def _flatten_pairpos(subtable) -> list[tuple[str, str, int]]:
 
     if subtable.Format == 1:
         coverage = subtable.Coverage.glyphs
-        for left, pairset in zip(coverage, subtable.PairSet):
+        for left, pairset in zip(coverage, subtable.PairSet, strict=False):
             for record in pairset.PairValueRecord:
                 value = _read_xadvance(record.Value1)
                 if value:

@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ttfautohint
+
+      - name: Install Python dependencies
+        run: |
+          python -m venv venv
+          venv/bin/pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Ruff
+        run: venv/bin/ruff check .
+
+      - name: Pytest
+        run: venv/bin/pytest -m "not integration"
