@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__serena__list_memories",
+      "mcp__serena__read_memory",
+      "mcp__serena__write_memory",
+      "Bash(venv/bin/pytest -v)",
+      "Bash(venv/bin/pylint mcp-server/server.py)",
+      "Bash(venv/bin/pylint --version)",
+      "Bash(venv/bin/mypy mcp-server/server.py)"
+    ]
+  }
+}

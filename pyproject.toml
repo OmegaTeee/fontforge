@@ -49,3 +49,23 @@ filterwarnings = [
     # keep them visible but don't fail on them.
     "default",
 ]
+
+[tool.mypy]
+mypy_path = "scripts"
+ignore_missing_imports = false
+
+[[tool.mypy.overrides]]
+module = "fontTools.*"
+ignore_missing_imports = true
+
+[tool.pylint.messages_control]
+disable = [
+    "protected-access",     # _fontforge_log_path is intentional metadata
+    "global-statement",     # mcp-server uses global for logging setup
+    "too-general-exception", # catching Exception is OK at boundaries
+]
+
+[tool.pylint.master]
+# Mirror pytest/mcp-server sys.path trick: scripts/ is not a package,
+# bare-name imports (e.g., `import kern`) work because scripts/ is on sys.path
+init-hook = "import sys; sys.path.insert(0, 'scripts')"

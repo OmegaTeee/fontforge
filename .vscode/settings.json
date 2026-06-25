@@ -3,13 +3,13 @@
   // FontForge lives at the workspace root with its own venv. Always prefer
   // venv/bin/python — never the system Python (see CLAUDE.md).
   "python.defaultInterpreterPath": "${workspaceFolder}/venv/bin/python",
-  "python-envs.pythonProjects": [
-    {
-      "path": "${workspaceFolder}",
-      "envManager": "ms-python.python:venv",
-      "packageManager": "ms-python.python:pip"
-    }
-  ],
+  // "python-envs.pythonProjects": [
+  //   {
+  //     "path": "${workspaceFolder}",
+  //     "envManager": "ms-python.python:venv",
+  //     "packageManager": "ms-python.python:pip"
+  //   }
+  // ],
   "python.terminal.useEnvFile": true,
   "python.terminal.activateEnvInCurrentTerminal": true,
   "python.terminal.activateEnvironment": true,
@@ -51,7 +51,8 @@
   "terminal.integrated.enablePersistentSessions": true,
   "terminal.integrated.env.osx": {
     "PATH": "${workspaceFolder}/venv/bin:${env:PATH}",
-    "USERHOME": "/Users/visualval"
+    "USERHOME": "/Users/visualval",
+    "PYTHONPATH": "${workspaceFolder}/scripts:${workspaceFolder}/mcp-server:${env:PYTHONPATH}"
   },
   "files.exclude": {
     "**/__pycache__": true,
@@ -81,19 +82,28 @@
     "${workspaceFolder}/venv/bin/pytest": true,
     "${workspaceFolder}/venv/bin/ruff": true
   },
-  "vscode-openai.baseUrl": "http://127.0.0.1:9090/v1",
-  "vscode-openai.conversation-configuration.api-headers": [
-    {
-      "Authorization": "Bearer sk-prompthub-vscode-001",
-      "Content-Type": "application/json",
-      "X-Client-Name": "vscode",
-      "X-Client-ID": "vscode"
-    }
-  ],
-  "vscode-openai.defaultModel": "qwen3-4b-instruct-2507",
   "markdown.styles": [
     ".vscode/markdown.css"
   ],
-  "qwen-code.provider": "api-key",
-  "qwen-code.apiKey": "sk-prompthub-qwen-code-001"
+  "vscode-openai.authenticationMethod": "api-key",
+  "vscode-openai.azureApiVersion": "2024-06-01",
+  "vscode-openai.baseUrl": "http://localhost:1234/v1",
+  "vscode-openai.conversation-configuration.api-headers": [
+    {
+      "Authorization": "Bearer ${PH_API_TOKEN}",
+      "Content-Type": "application/json",
+      "X-Client-Name": "vscode"
+    }
+  ],
+  "vscode-openai.conversation-configuration.max-tokens": 500,
+  "vscode-openai.conversation-configuration.number-of-attempts": 5,
+  "vscode-openai.conversation-configuration.summary-max-length": 250,
+  "vscode-openai.conversation-configuration.temperature": 0.4,
+  "vscode-openai.conversation-configuration.top-p": 0.9,
+  "vscode-openai.defaultModel": "qwen3-4b-instruct-2507",
+  "vscode-openai.embeddingModel": "setup-required",
+  "vscode-openai.embeddingsDeployment": "setup-required",
+  "vscode-openai.scmDeployment": "setup-required",
+  "vscode-openai.scmModel": "qwen3-4b-instruct-2507",
+  "vscode-openai.serviceProvider": "Custom-OpenAI",
 }

@@ -6,6 +6,23 @@
       "args": [
         "/Users/visualval/fontforge/mcp-server/server.py"
       ]
+    },
+    "serena": {
+      "name": "Serena",
+      "type": "stdio",
+      "command": "/opt/homebrew/bin/uvx",
+      "cwd": "/Users/visualval/fontforge",
+      "args": [
+        "--from",
+        "git+https://github.com/oraios/serena",
+        "serena",
+        "start-mcp-server",
+        "--project-from-cwd",
+        "--context",
+        "vscode",
+        "--open-web-dashboard",
+        "False"
+      ]
     }
   }
 }

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# pylint: disable=broad-except
 """FontForge MCP Server.
 
 Exposes font management operations as MCP tools for use with Claude Code
@@ -118,7 +119,7 @@ def _configure_logging() -> logging.Logger:
         handler.close()
 
     handler = RotatingFileHandler(log_path, maxBytes=1_000_000, backupCount=3, encoding="utf-8")
-    handler._fontforge_log_path = log_path
+    handler._fontforge_log_path = log_path  # type: ignore[attr-defined]
     handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
     logger.addHandler(handler)
     return logger
